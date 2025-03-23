@@ -3,7 +3,7 @@ module github.com/mandelsoft/ttycolors
 go 1.23.2
 
 require (
-	github.com/mandelsoft/goutils v0.0.0-20250316130358-bfa4518828cc
+	github.com/mandelsoft/goutils v0.0.0-20250323093506-2cf95092ca48
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
 	golang.org/x/term v0.27.0

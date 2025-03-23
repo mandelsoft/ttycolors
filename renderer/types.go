@@ -1,7 +1,5 @@
 package renderer
 
-var NoColors = false
-
 type String interface {
 	Enable(...bool)
 	Append(a ...any) String

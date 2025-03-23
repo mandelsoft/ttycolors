@@ -3,9 +3,9 @@ package ttycolors
 import (
 	"bytes"
 
-	"github.com/mandelsoft/goutils/general"
+	"github.com/mandelsoft/goutils/optionutils"
 	"github.com/mandelsoft/ttycolors/ansi"
-	"github.com/mandelsoft/ttycolors/colorstring/renderer"
+	"github.com/mandelsoft/ttycolors/renderer"
 )
 
 func containsCode(list []ansi.Code, code ansi.Code) bool {
@@ -17,7 +17,9 @@ func containsCode(list []ansi.Code, code ansi.Code) bool {
 	return false
 }
 
-type FormatInfo struct {
+type FormatInfo = *_FormatInfo
+
+type _FormatInfo struct {
 	enabled   bool
 	modeStart []ansi.Code
 	modeEnd   []ansi.Code
@@ -25,17 +27,17 @@ type FormatInfo struct {
 	bg        ansi.Code
 }
 
-var _ Format = (*FormatInfo)(nil)
+var _ Format = (FormatInfo)(nil)
 
-func (f *FormatInfo) Enabled() bool {
+func (f *_FormatInfo) Enabled() bool {
 	return f.enabled
 }
 
-func (f *FormatInfo) Enable(b ...bool) {
-	f.enabled = general.OptionalDefaultedBool(true, b...)
+func (f *_FormatInfo) Enable(b ...bool) {
+	f.enabled = optionutils.BoolOption(b...)
 }
 
-func (f *FormatInfo) Start() []byte {
+func (f *_FormatInfo) Start() []byte {
 	var s []byte
 
 	if !f.enabled {
@@ -53,7 +55,7 @@ func (f *FormatInfo) Start() []byte {
 	return []byte(ansi.Mode(ansi.Sequence(s)))
 }
 
-func (f *FormatInfo) End() []byte {
+func (f *_FormatInfo) End() []byte {
 	var s []byte
 
 	if !f.enabled {
@@ -71,7 +73,7 @@ func (f *FormatInfo) End() []byte {
 	return []byte(ansi.Mode(ansi.Sequence(s)))
 }
 
-func (f *FormatInfo) Add(a *FormatInfo) {
+func (f *_FormatInfo) Add(a FormatInfo) {
 	if a.bg != nil {
 		f.bg = a.bg
 	}
@@ -88,38 +90,39 @@ func (f *FormatInfo) Add(a *FormatInfo) {
 	}
 }
 
-func (f *FormatInfo) Format() *FormatInfo {
+func (f *_FormatInfo) Format() FormatInfo {
 	return f
 }
 
-func (f *FormatInfo) String(args ...any) renderer.String {
+func (f *_FormatInfo) String(args ...any) renderer.String {
 	var r renderer.String
 
 	if len(f.modeStart) > 0 {
-		r = renderer.NewMode(ansi.Sequence{}.Append(f.modeStart...), ansi.Sequence{}.Append(f.modeEnd...), args)
-		r.Enable(f.enabled)
+		r = renderer.NewMode(f.enabled, ansi.Sequence{}.Append(f.modeStart...), ansi.Sequence{}.Append(f.modeEnd...), args)
 		args = []any{r}
 	}
 	if f.fg != nil {
-		r = renderer.NewFGColor(f.fg, args)
-		r.Enable(f.enabled)
+		r = renderer.NewFGColor(f.enabled, f.fg, args)
 		args = []any{r}
 	}
 	if f.bg != nil {
-		r = renderer.NewBGColor(f.bg, args)
-		r.Enable(f.enabled)
+		r = renderer.NewBGColor(f.enabled, f.bg, args)
 	}
 	if r == nil {
-		return renderer.Sequence(args...)
+		return renderer.Sequence(f.enabled, args)
 	}
 	return r
 }
 
-func New(fmts ...FormatProvider) *FormatInfo {
+func New(fmts ...FormatProvider) FormatInfo {
+	return newFormat(!NoColors, fmts...)
+}
+
+func newFormat(enabled bool, fmts ...FormatProvider) FormatInfo {
 	if len(fmts) == 1 {
 		return fmts[0].Format()
 	}
-	r := &FormatInfo{enabled: !renderer.NoColors}
+	r := &_FormatInfo{enabled: enabled}
 	for _, f := range fmts {
 		r.Add(f.Format())
 	}
@@ -136,9 +139,9 @@ type fmtMode byte
 
 var _ Format = (fmtMode)(0)
 
-func (c fmtMode) Format() *FormatInfo {
-	f := &FormatInfo{
-		enabled: !renderer.NoColors,
+func (c fmtMode) Format() FormatInfo {
+	f := &_FormatInfo{
+		enabled: !NoColors,
 		modeEnd: []ansi.Code{ansi.MODE_RESET_BOLD + ansi.Simple(c)},
 	}
 	if c > 0 {
@@ -169,9 +172,9 @@ type fmtFgColor byte
 
 var _ Format = (fmtFgColor)(0)
 
-func (c fmtFgColor) Format() *FormatInfo {
-	return &FormatInfo{
-		enabled: !renderer.NoColors,
+func (c fmtFgColor) Format() FormatInfo {
+	return &_FormatInfo{
+		enabled: !NoColors,
 		fg:      ansi.COLOR_FG_BLACK + ansi.Simple(c),
 	}
 }
@@ -197,9 +200,9 @@ type fmtBgColor byte
 
 var _ Format = (fmtBgColor)(0)
 
-func (c fmtBgColor) Format() *FormatInfo {
-	return &FormatInfo{
-		enabled: !renderer.NoColors,
+func (c fmtBgColor) Format() FormatInfo {
+	return &_FormatInfo{
+		enabled: !NoColors,
 		bg:      ansi.COLOR_BG_BLACK + ansi.Simple(c),
 	}
 }
@@ -225,9 +228,9 @@ type fmtFgBrightColor byte
 
 var _ Format = (fmtFgBrightColor)(0)
 
-func (c fmtFgBrightColor) Format() *FormatInfo {
-	return &FormatInfo{
-		enabled: !renderer.NoColors,
+func (c fmtFgBrightColor) Format() FormatInfo {
+	return &_FormatInfo{
+		enabled: !NoColors,
 		fg:      ansi.COLOR_FG_BRIGHT_BLACK + ansi.Simple(c),
 	}
 }
@@ -253,9 +256,9 @@ type fmtBgBrightColor byte
 
 var _ Format = (fmtBgBrightColor)(0)
 
-func (c fmtBgBrightColor) Format() *FormatInfo {
-	return &FormatInfo{
-		enabled: !renderer.NoColors,
+func (c fmtBgBrightColor) Format() FormatInfo {
+	return &_FormatInfo{
+		enabled: !NoColors,
 		bg:      ansi.COLOR_BG_BRIGHT_BLACK + ansi.Simple(c),
 	}
 }
@@ -277,30 +280,30 @@ const (
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func FmtRGBColor(r, g, b byte) *FormatInfo {
-	return &FormatInfo{
-		enabled: !renderer.NoColors,
+func FmtRGBColor(r, g, b byte) FormatInfo {
+	return &_FormatInfo{
+		enabled: !NoColors,
 		fg:      ansi.COLOR_FG_RGB.AppendBytes(r, g, b),
 	}
 }
 
-func FmtBgRGBColor(r, g, b byte) *FormatInfo {
-	return &FormatInfo{
-		enabled: !renderer.NoColors,
+func FmtBgRGBColor(r, g, b byte) FormatInfo {
+	return &_FormatInfo{
+		enabled: !NoColors,
 		bg:      ansi.COLOR_BG_RGB.AppendBytes(r, g, b),
 	}
 }
 
-func FmtIdColor(id byte) *FormatInfo {
-	return &FormatInfo{
-		enabled: !renderer.NoColors,
+func FmtIdColor(id byte) FormatInfo {
+	return &_FormatInfo{
+		enabled: !NoColors,
 		fg:      ansi.COLOR_FG_ID.AppendBytes(id),
 	}
 }
 
-func FmtBgIdColor(id byte) *FormatInfo {
-	return &FormatInfo{
-		enabled: !renderer.NoColors,
+func FmtBgIdColor(id byte) FormatInfo {
+	return &_FormatInfo{
+		enabled: !NoColors,
 		bg:      ansi.COLOR_BG_ID.AppendBytes(id),
 	}
 }

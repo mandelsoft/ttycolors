@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	. "github.com/mandelsoft/ttycolors"
-	"github.com/mandelsoft/ttycolors/colorstring"
-	. "github.com/mandelsoft/ttycolors/colorstring"
 )
 
 func demo() {
@@ -52,7 +50,7 @@ func main() {
 	demo()
 	x := Blue("blue", Red("red"), "blue").String()
 	_ = x
-	str := colorstring.Blue("this blue text contains a ", colorstring.Italic(colorstring.Red("red"), " italic"), " word")
+	str := Blue("this blue text contains a ", Italic(Red("red"), " italic"), " word")
 	x = str.String()
 	fmt.Printf("%s\n", str)
 	str = str.Append(".")

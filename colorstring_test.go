@@ -1,10 +1,11 @@
-package colorstring_test
+package ttycolors_test
 
 import (
-	"github.com/mandelsoft/ttycolors/ansi"
-	. "github.com/mandelsoft/ttycolors/colorstring"
+	. "github.com/mandelsoft/ttycolors"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/mandelsoft/ttycolors/ansi"
 )
 
 var _ = Describe("ColorString Test Environment", func() {

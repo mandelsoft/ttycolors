@@ -3,7 +3,7 @@ package renderer
 import (
 	"fmt"
 
-	"github.com/mandelsoft/goutils/general"
+	"github.com/mandelsoft/goutils/optionutils"
 )
 
 type _Sequence struct {
@@ -15,16 +15,16 @@ type _Sequence struct {
 var _ String = (*_Sequence)(nil)
 var _ Renderer = (*_Sequence)(nil)
 
-func newSequence(self Renderer, nested []any) _Sequence {
+func newSequence(self Renderer, enabled bool, nested []any) _Sequence {
 	return _Sequence{
 		self:    self,
-		enabled: !NoColors,
+		enabled: enabled,
 		seq:     nested,
 	}
 }
 
-func Sequence(seq ...any) String {
-	s := newSequence(nil, seq)
+func Sequence(enabled bool, nested []any) String {
+	s := newSequence(nil, enabled, nested)
 	s.self = &s
 	return &s
 }
@@ -34,11 +34,11 @@ func (s *_Sequence) Enabled() bool {
 }
 
 func (s *_Sequence) Enable(m ...bool) {
-	s.enabled = general.OptionalDefaultedBool(true, m...)
+	s.enabled = optionutils.BoolOption(m...)
 }
 
 func (s *_Sequence) Append(a ...any) String {
-	r := Sequence(append([]any{s.self}, a...)...)
+	r := Sequence(s.enabled, append([]any{s.self}, a...))
 	r.Enable(s.Enabled())
 	return r
 }

@@ -5,16 +5,16 @@ import (
 )
 
 type _Mode struct {
-	_format
+	_base
 	end ansi.Code
 }
 
 var _ String = (*_Mode)(nil)
 var _ Renderer = (*_Mode)(nil)
 
-func NewMode(start, end ansi.Code, nested []any) String {
+func NewMode(enabled bool, start, end ansi.Code, nested []any) String {
 	m := &_Mode{end: end}
-	m._format = newFormat(m, start, nested)
+	m._base = newFormat(m, enabled, start, nested)
 	return m
 }
 

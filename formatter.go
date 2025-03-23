@@ -5,19 +5,22 @@ import (
 	"io"
 	"os"
 
-	"github.com/mandelsoft/goutils/general"
-	"github.com/mandelsoft/ttycolors/colorstring"
+	"github.com/mandelsoft/goutils/optionutils"
 )
 
 type formatter struct {
-	fmt *FormatInfo
+	fmt FormatInfo
 }
 
 var _ Formatter = (*formatter)(nil)
 
 func NewFormatter(f ...FormatProvider) Formatter {
+	return newFormatter(NoColors, f...)
+}
+
+func newFormatter(enabled bool, f ...FormatProvider) Formatter {
 	return &formatter{
-		New(f...),
+		newFormat(enabled, f...),
 	}
 }
 
@@ -26,11 +29,11 @@ func (f formatter) Enabled() bool {
 }
 
 func (f formatter) Enable(b ...bool) {
-	f.fmt.enabled = general.OptionalDefaultedBool(true, b...)
+	f.fmt.enabled = optionutils.BoolOption(b...)
 }
 
 func (f formatter) Print(i ...interface{}) (n int, err error) {
-	return os.Stdout.Write([]byte(f.fmt.String(colorstring.Sequence(i...)).String()))
+	return os.Stdout.Write([]byte(f.fmt.String(Sequence(i...)).String()))
 }
 
 func (f formatter) Printf(s string, i ...interface{}) (n int, err error) {
@@ -38,7 +41,7 @@ func (f formatter) Printf(s string, i ...interface{}) (n int, err error) {
 }
 
 func (f formatter) Sprint(i ...interface{}) string {
-	return f.fmt.String(colorstring.Sequence(i...)).String()
+	return f.fmt.String(Sequence(i...)).String()
 }
 
 func (f formatter) Sprintf(s string, i ...interface{}) string {
@@ -46,7 +49,7 @@ func (f formatter) Sprintf(s string, i ...interface{}) string {
 }
 
 func (f formatter) Fprint(writer io.Writer, i ...interface{}) (n int, err error) {
-	return writer.Write([]byte(f.fmt.String(colorstring.Sequence(i...)).String()))
+	return writer.Write([]byte(f.fmt.String(Sequence(i...)).String()))
 }
 
 func (f formatter) Fprintf(writer io.Writer, s string, i ...interface{}) (n int, err error) {

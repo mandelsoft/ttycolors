@@ -3,11 +3,16 @@ package ttycolors
 import (
 	"io"
 
-	"github.com/mandelsoft/ttycolors/colorstring/renderer"
+	"github.com/mandelsoft/ttycolors/renderer"
 )
 
+type String = renderer.String
+type Renderer renderer.Renderer
+type StringComposer = renderer.Composer
+type ComposerFunc = renderer.ComposerFunc
+
 type FormatProvider interface {
-	Format() *FormatInfo
+	Format() FormatInfo
 }
 
 type Format interface {

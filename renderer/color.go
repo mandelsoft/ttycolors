@@ -5,16 +5,16 @@ import (
 )
 
 type _FGColor struct {
-	_format
+	_base
 }
 
 type _BGColor struct {
-	_format
+	_base
 }
 
-func NewFGColor(c ansi.Code, nested []any) String {
+func NewFGColor(enabled bool, c ansi.Code, nested []any) String {
 	col := &_FGColor{}
-	col._format = newFormat(col, c, nested)
+	col._base = newFormat(col, enabled, c, nested)
 	return col
 }
 
@@ -28,9 +28,9 @@ func (c *_FGColor) Render(enabled bool, state *state) (*state, string) {
 	return c._Sequence.Render(enabled, nil)
 }
 
-func NewBGColor(c ansi.Code, nested []any) String {
+func NewBGColor(enabled bool, c ansi.Code, nested []any) String {
 	col := &_BGColor{}
-	col._format = newFormat(col, c, nested)
+	col._base = newFormat(col, enabled, c, nested)
 	return col
 }
 

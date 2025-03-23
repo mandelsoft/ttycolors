@@ -3,7 +3,6 @@ package ttycolors_test
 import (
 	. "github.com/mandelsoft/ttycolors"
 	"github.com/mandelsoft/ttycolors/ansi"
-	"github.com/mandelsoft/ttycolors/colorstring"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -65,7 +64,7 @@ var _ = Describe("Format Test Environment", func() {
 		})
 
 		It("complex color", func() {
-			s := FmtBlue.String("blue", colorstring.Green("green"), colorstring.Red("red"), "blue")
+			s := FmtBlue.String("blue", Green("green"), Red("red"), "blue")
 			s.Enable(false)
 			Expect(s.String()).To(Equal("blue" +
 				"green" +
@@ -74,7 +73,7 @@ var _ = Describe("Format Test Environment", func() {
 		})
 
 		It("mixed", func() {
-			s := FmtBlue.String("blue", colorstring.Bold(colorstring.Green("bold green"), "bold blue"), colorstring.Red("red"), "blue")
+			s := FmtBlue.String("blue", Bold(Green("bold green"), "bold blue"), Red("red"), "blue")
 			s.Enable(false)
 			Expect(s.String()).To(Equal("blue" +
 				"bold green" +
@@ -140,7 +139,7 @@ var _ = Describe("Format Test Environment", func() {
 		})
 
 		It("complex color", func() {
-			s := FmtBlue.String("blue", colorstring.Green("green"), colorstring.Red("red"), "blue")
+			s := FmtBlue.String("blue", Green("green"), Red("red"), "blue")
 			s.Enable()
 			Expect(s.String()).To(Equal(ansi.Mode(ansi.COLOR_FG_BLUE) + "blue" +
 				ansi.Mode(ansi.COLOR_FG_GREEN) + "green" +
@@ -150,7 +149,7 @@ var _ = Describe("Format Test Environment", func() {
 		})
 
 		It("mixed", func() {
-			s := FmtBlue.String("blue", colorstring.Bold(colorstring.Green("bold green"), "bold blue"), colorstring.Red("red"), "blue")
+			s := FmtBlue.String("blue", Bold(Green("bold green"), "bold blue"), Red("red"), "blue")
 			s.Enable()
 			Expect(s.String()).To(Equal(ansi.Mode(ansi.COLOR_FG_BLUE) + "blue" +
 				ansi.Mode(ansi.MODE_BOLD) + ansi.Mode(ansi.COLOR_FG_GREEN) + "bold green" +
