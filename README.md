@@ -1,7 +1,7 @@
-# Color Output for ANSI terminals
+# Color Output for ANSI Terminals
 
 This Go package provides support for colorized output
-in terms of [ANSI Escape Code](http://en.wikipedia.org/wiki/ANSI_escape_code#Colors).
+in terms of [ANSI Escape Codes](http://en.wikipedia.org/wiki/ANSI_escape_code#Colors).
 
 The library consists of three basic APIs:
 - [composition of output formats](#output-format-management)
@@ -25,6 +25,7 @@ It supports the following ANSI output formats:
 
 The APIs support cascaded output format management.
 Foreground and background colors as well as the output modes can be enabled and disabled independently.
+It is possible to insert format statements into surrounding ones.
 
 The main package `github.com/mandelsoft/ttycolors`
 contains the management of native and composed 
@@ -117,7 +118,7 @@ As can be seen, the two APIs for colorized output are combinable
 ## Managing colorized Strings
 
 The package `github.com/mandelsoft/ttycolors`
-let you compose colored strings.
+lets you compose colored strings.
 The base type for such a string is `String`.
 It can be rendered to a Go string using the `String() string` method.
 
@@ -134,13 +135,13 @@ to a formatting functions can locally use own
 modes or colors independently of the surrounding settings.
 
 With the method `Sequence(text...)` a sequence of Strings can be created.
-All composition functions access an arbitrary list of Golang strings or other
+All composition functions accept an arbitrary list of Golang strings or other
 `String` objects. All other types will be converted to a string using `fmt.Sprintf("%v")`.
 
 ### Examples
 
 ```golang
-str:= ttycolors.Blue("this blue text contains a ", ttycolors.Italic(ttycolors.Red("red"), " italic"), " word")
+str := ttycolors.Blue("this blue text contains a ", ttycolors.Italic(ttycolors.Red("red"), " italic"), " word")
 ```
 
 This expression provides a `ttycolors.String` object. In between, there is an italic part with a red word. All the rest is still blue.
@@ -172,9 +173,15 @@ fmt.Printf("%s\n", str)
 
 outputs the color string to the standard output.
 
+<p align="center">
+  <img src="examples/strings/demo.gif" alt="Cascaded Colorized String" title="Cascaded Colorized String" />
+</p>
+
+
+
 A `String` object can be used to enable or disable coloring
 by using the `Enable(b...)` method. The default coloring
-is defined by the `NoColors` variable, it is defaulted to `true`.
+is defined by the `NoColors` variable.
 
 The state of top level `String` object determines the color enablement, regardless what sublevel objects define.
 
@@ -209,6 +216,11 @@ Therefore, it could have been written as follows, also:
 s := ctx.Blue("a blue text with some ", ttycolors.Italic("italic"), " word")
 ```
 
+or
+
+```golang
+s := ctx.String(ttycolors.Blue("a blue text with some ", ttycolors.Italic("italic"), " word"))
+```
 
 
 
