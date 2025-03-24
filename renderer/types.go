@@ -15,3 +15,8 @@ type Composer interface {
 }
 
 type ComposerFunc = func(...any) String
+
+type ContextInfo interface {
+	IsEnabled() bool
+	Enable(b ...bool)
+}

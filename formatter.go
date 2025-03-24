@@ -12,7 +12,10 @@ type formatter struct {
 	fmt FormatInfo
 }
 
-var _ Formatter = (*formatter)(nil)
+var (
+	_ Formatter      = (*formatter)(nil)
+	_ FormatProvider = (*formatter)(nil)
+)
 
 func NewFormatter(f ...FormatProvider) Formatter {
 	return newFormatter(NoColors, f...)
@@ -24,12 +27,20 @@ func newFormatter(enabled bool, f ...FormatProvider) Formatter {
 	}
 }
 
-func (f formatter) Enabled() bool {
+func (f formatter) IsEnabled() bool {
 	return f.fmt.enabled
 }
 
 func (f formatter) Enable(b ...bool) {
 	f.fmt.enabled = optionutils.BoolOption(b...)
+}
+
+func (f formatter) Format() FormatInfo {
+	return f.fmt
+}
+
+func (f formatter) String(seq ...any) String {
+	return f.fmt.String(seq...)
 }
 
 func (f formatter) Print(i ...interface{}) (n int, err error) {

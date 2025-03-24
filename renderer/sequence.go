@@ -12,8 +12,11 @@ type _Sequence struct {
 	seq     []any
 }
 
-var _ String = (*_Sequence)(nil)
-var _ Renderer = (*_Sequence)(nil)
+var (
+	_ String      = (*_Sequence)(nil)
+	_ Renderer    = (*_Sequence)(nil)
+	_ ContextInfo = (*_Sequence)(nil)
+)
 
 func newSequence(self Renderer, enabled bool, nested []any) _Sequence {
 	return _Sequence{
@@ -29,7 +32,7 @@ func Sequence(enabled bool, nested []any) String {
 	return &s
 }
 
-func (s *_Sequence) Enabled() bool {
+func (s *_Sequence) IsEnabled() bool {
 	return s.enabled
 }
 
@@ -39,7 +42,7 @@ func (s *_Sequence) Enable(m ...bool) {
 
 func (s *_Sequence) Append(a ...any) String {
 	r := Sequence(s.enabled, append([]any{s.self}, a...))
-	r.Enable(s.Enabled())
+	r.Enable(s.IsEnabled())
 	return r
 }
 
@@ -66,6 +69,8 @@ func render(enabled bool, state *state, s any) (*state, string) {
 		return e.Render(enabled, state)
 	case string:
 		r = e
+	case []byte:
+		r = string(e)
 	default:
 		r = fmt.Sprintf("%v", e)
 	}

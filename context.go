@@ -18,6 +18,8 @@ type _context struct {
 	disabled *bool
 }
 
+var _ ContextInfo = (*_context)(nil)
+
 // NewContext provides a new output context
 // with enabled or disabled colors.
 // The default setting is taken from NoColors.
@@ -54,6 +56,14 @@ func (c *_context) NewFormatter(f ...FormatProvider) Formatter {
 
 func (c *_context) Sequence(seq ...any) String {
 	return renderer.Sequence(!*c.disabled, seq)
+}
+
+func (c *_context) String(seq ...any) String {
+	return renderer.Sequence(!*c.disabled, seq)
+}
+
+func (c *_context) StringWith(f FormatProvider, seq ...any) String {
+	return c.Sequence(f.Format().String(seq...))
 }
 
 ////////////////////////////////////////////////////////////////////////////////

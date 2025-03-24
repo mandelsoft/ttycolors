@@ -10,6 +10,7 @@ type String = renderer.String
 type Renderer renderer.Renderer
 type StringComposer = renderer.Composer
 type ComposerFunc = renderer.ComposerFunc
+type ContextInfo = renderer.ContextInfo
 
 type FormatProvider interface {
 	Format() FormatInfo
@@ -21,8 +22,9 @@ type Format interface {
 }
 
 type Formatter interface {
-	Enabled() bool
-	Enable(...bool)
+	FormatProvider
+	StringComposer
+	ContextInfo
 
 	Print(i ...interface{}) (n int, err error)
 	Printf(string, ...interface{}) (n int, err error)

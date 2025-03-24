@@ -27,9 +27,12 @@ type _FormatInfo struct {
 	bg        ansi.Code
 }
 
-var _ Format = (FormatInfo)(nil)
+var (
+	_ Format      = (FormatInfo)(nil)
+	_ ContextInfo = (FormatInfo)(nil)
+)
 
-func (f *_FormatInfo) Enabled() bool {
+func (f *_FormatInfo) IsEnabled() bool {
 	return f.enabled
 }
 
