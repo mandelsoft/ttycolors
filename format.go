@@ -122,12 +122,11 @@ func New(fmts ...FormatProvider) FormatInfo {
 }
 
 func newFormat(enabled bool, fmts ...FormatProvider) FormatInfo {
-	if len(fmts) == 1 {
-		return fmts[0].Format()
-	}
 	r := &_FormatInfo{enabled: enabled}
 	for _, f := range fmts {
-		r.Add(f.Format())
+		if f != nil {
+			r.Add(f.Format())
+		}
 	}
 	return r
 }
