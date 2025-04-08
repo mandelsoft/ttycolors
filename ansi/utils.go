@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/mandelsoft/goutils/sliceutils"
 )
@@ -71,4 +72,48 @@ func EscapeLength(data []byte) int {
 		}
 	}
 	return 0
+}
+
+// SplitAt splits a string containing ANSI code sequences
+// after the n-th rune. idx should be between
+// 0 and CharLen(s) (including).
+func SplitAt(s string, idx int) (string, string) {
+	offset := CharIndex(s, idx)
+	return string([]byte(s)[:offset]), string([]byte(s)[offset:])
+}
+
+// CharIndex returns the byte index of the n-th
+// rune in a string containing ANI code sequences.
+func CharIndex(s string, idx int) int {
+	data := []byte(s)
+	cnt := 0
+	i := 0
+	for i < len(data) {
+		l := EscapeLength(data[i:])
+		if l == 0 {
+			_, l = utf8.DecodeRune(data[i:])
+			if cnt == idx {
+				break
+			}
+			cnt++
+		}
+		i += l
+	}
+	return i
+}
+
+// CharLen determines the number of runes
+// in a string containing ANSI code sequences.
+func CharLen(s string) int {
+	data := []byte(s)
+	cnt := 0
+	for len(data) > 0 {
+		l := EscapeLength(data)
+		if l == 0 {
+			_, l = utf8.DecodeRune(data)
+			cnt++
+		}
+		data = data[l:]
+	}
+	return cnt
 }
