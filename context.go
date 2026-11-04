@@ -68,8 +68,16 @@ func (c *_context) StringWith(f FormatProvider, seq ...any) String {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+func (c *_context) Standard(s ...any) String {
+	return renderer.NewHighlight(!*c.disabled, ansi.MODE_RESET_BOLD, s)
+}
 func (c *_context) Bold(s ...any) String {
-	return renderer.NewMode(!*c.disabled, ansi.MODE_BOLD, ansi.MODE_RESET_BOLD, s)
+	// BOLD and DIM should be in the same dimension according to ANSI spec. BUt mordern terminals
+	// can dim bold text. Bold Text is thicker and brighter, Dimmed Bold text is dimmer but still thicker.
+	return renderer.NewHighlight(!*c.disabled, ansi.Sequence{byte(ansi.MODE_RESET_BOLD), byte(ansi.MODE_BOLD)}, s)
+}
+func (c *_context) Dim(s ...any) String {
+	return renderer.NewHighlight(!*c.disabled, ansi.Sequence{byte(ansi.MODE_RESET_BOLD), byte(ansi.MODE_DIM)}, s)
 }
 func (c *_context) Italic(s ...any) String {
 	return renderer.NewMode(!*c.disabled, ansi.MODE_ITALIC, ansi.MODE_RESET_ITALIC, s)

@@ -13,6 +13,7 @@ const (
 	MODE_RESET_STRIKE    Simple = 29
 
 	MODE_BOLD      Simple = 1
+	MODE_DIM       Simple = 2
 	MODE_ITALIC    Simple = 3
 	MODE_UNDERLINE Simple = 4
 	MODE_BLINK     Simple = 5
@@ -67,6 +68,11 @@ const (
 	COLOR_BG_BRIGHT_MAGENTA
 	COLOR_BG_BRIGHT_CYAN
 	COLOR_BG_BRIGHT_WHITE
+)
+
+const (
+	COLOR_UL         Simple = 58
+	COLOR_UL_DEFAULT Simple = 59
 )
 
 const (

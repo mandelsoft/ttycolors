@@ -18,10 +18,14 @@ func NewMode(enabled bool, start, end ansi.Code, nested []any) String {
 	return m
 }
 
-func (m *_Mode) Render(enabled bool, state *state) (*state, string) {
+func (m *_Mode) Render(enabled bool, st state) (state, string) {
 	if enabled {
-		state, sub := m._Sequence.Render(enabled, state)
-		return state, ansi.Mode(m.start) + sub + ansi.Mode(m.end)
+		st, sub := m._Sequence.Render(enabled, st)
+		return st, ansi.Mode(m.start) + sub + ansi.Mode(m.end)
 	}
-	return m._Sequence.Render(enabled, state)
+	return m._Sequence.Render(enabled, st)
+}
+
+func NewHighlight(enabled bool, c ansi.Code, nested []any) String {
+	return newGroupFormat(highlightGroup, enabled, c, nested)
 }

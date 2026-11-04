@@ -88,7 +88,7 @@ var _ = Describe("ColorString Test Environment", func() {
 		It("mode", func() {
 			s := Bold("bold")
 			s.Enable()
-			Expect(s.String()).To(Equal(ansi.Mode(ansi.MODE_BOLD) + "bold" + ansi.Mode(ansi.MODE_RESET_BOLD)))
+			Expect(s.String()).To(Equal(ansi.Mode(ansi.MODE_RESET_BOLD, ansi.MODE_BOLD) + "bold" + ansi.Mode(ansi.MODE_RESET_BOLD)))
 		})
 
 		It("standard color", func() {
@@ -175,11 +175,11 @@ var _ = Describe("ColorString Test Environment", func() {
 			s.Enable()
 			x := s.String()
 			e := ansi.Mode(ansi.COLOR_FG_BLUE) + "blue" +
-				ansi.Mode(ansi.MODE_BOLD) + ansi.Mode(ansi.COLOR_FG_GREEN) + "bold green" +
+				ansi.Mode(ansi.MODE_RESET_BOLD, ansi.MODE_BOLD) + ansi.Mode(ansi.COLOR_FG_GREEN) + "bold green" +
 				ansi.Mode(ansi.COLOR_FG_BLUE) + "bold blue" +
 				ansi.Mode(ansi.COLOR_BG_WHITE) + "white back" +
 				ansi.Mode(ansi.COLOR_BG_YELLOW) + "yellow back" +
-				ansi.Mode(ansi.MODE_RESET_BOLD) + ansi.Mode(ansi.COLOR_BG_DEFAULT) + ansi.Mode(ansi.COLOR_FG_RED) + "red" +
+				ansi.Mode(ansi.COLOR_BG_DEFAULT, ansi.MODE_RESET_BOLD) + ansi.Mode(ansi.COLOR_FG_RED) + "red" +
 				ansi.Mode(ansi.COLOR_FG_BLUE) + "blue" +
 				ansi.Mode(ansi.COLOR_FG_DEFAULT)
 			Expect(x).To(Equal(e))
@@ -190,16 +190,33 @@ var _ = Describe("ColorString Test Environment", func() {
 			s.Enable()
 			x := s.String()
 			e := ansi.Mode(ansi.COLOR_FG_BLUE) + "blue" +
-				ansi.Mode(ansi.MODE_BOLD) + ansi.Mode(ansi.COLOR_FG_GREEN) + "bold green" +
+				ansi.Mode(ansi.MODE_RESET_BOLD, ansi.MODE_BOLD) + ansi.Mode(ansi.COLOR_FG_GREEN) + "bold green" +
 				ansi.Mode(ansi.COLOR_FG_YELLOW) + "bold yellow" +
 				ansi.Mode(ansi.COLOR_FG_GREEN) + "bold green" +
 				ansi.Mode(ansi.COLOR_FG_BLUE) + "bold blue" +
 				ansi.Mode(ansi.COLOR_BG_WHITE) + "white back" +
 				ansi.Mode(ansi.COLOR_BG_YELLOW) + "yellow back" +
-				ansi.Mode(ansi.MODE_RESET_BOLD) + ansi.Mode(ansi.COLOR_BG_DEFAULT) + ansi.Mode(ansi.COLOR_FG_RED) + "red" +
+				ansi.Mode(ansi.COLOR_BG_DEFAULT, ansi.MODE_RESET_BOLD) + ansi.Mode(ansi.COLOR_FG_RED) + "red" +
 				ansi.Mode(ansi.COLOR_FG_BLUE) + "blue" +
 				ansi.Mode(ansi.COLOR_FG_DEFAULT)
 			Expect(x).To(Equal(e))
+		})
+
+		It("resets bg nested in highlight", func() {
+			s := Bold(BgYellow("yellow back"), "bold")
+			s.Enable()
+			Expect(s.String()).To(Equal(ansi.Mode(ansi.MODE_RESET_BOLD, ansi.MODE_BOLD) +
+				ansi.Mode(ansi.COLOR_BG_YELLOW) + "yellow back" +
+				ansi.Mode(ansi.COLOR_BG_DEFAULT) + "bold" +
+				ansi.Mode(ansi.MODE_RESET_BOLD)))
+		})
+
+		It("renders outer highlight once", func() {
+			s := Bold(Green("bold green"))
+			s.Enable()
+			Expect(s.String()).To(Equal(ansi.Mode(ansi.MODE_RESET_BOLD, ansi.MODE_BOLD) +
+				ansi.Mode(ansi.COLOR_FG_GREEN) + "bold green" +
+				ansi.Mode(ansi.COLOR_FG_DEFAULT) + ansi.Mode(ansi.MODE_RESET_BOLD)))
 		})
 
 		It("alternating", func() {

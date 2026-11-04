@@ -1,7 +1,14 @@
 package ttycolors
 
+func Standard(s ...any) String {
+	return defaultContext.Standard(s...)
+}
+
 func Bold(s ...any) String {
 	return defaultContext.Bold(s...)
+}
+func Dim(s ...any) String {
+	return defaultContext.Dim(s...)
 }
 func Italic(s ...any) String {
 	return defaultContext.Italic(s...)

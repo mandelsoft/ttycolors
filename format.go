@@ -137,14 +137,26 @@ func Composer(fmts ...FormatProvider) renderer.ComposerFunc {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// FmtStandard is the standard font without bold or dim.
+var FmtStandard = &_FormatInfo{
+	enabled:   !NoColors,
+	modeStart: []ansi.Code{ansi.MODE_RESET_BOLD},
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 type fmtMode byte
 
 var _ Format = (fmtMode)(0)
 
 func (c fmtMode) Format() FormatInfo {
+	reset := ansi.Simple(c)
+	if reset == ansi.MODE_DIM {
+		reset = ansi.MODE_BOLD
+	}
 	f := &_FormatInfo{
 		enabled: !NoColors,
-		modeEnd: []ansi.Code{ansi.MODE_RESET_BOLD + ansi.Simple(c)},
+		modeEnd: []ansi.Code{ansi.MODE_RESET_BOLD + reset},
 	}
 	if c > 0 {
 		c++
@@ -159,6 +171,7 @@ func (c fmtMode) String(args ...any) renderer.String {
 
 const (
 	FmtBold fmtMode = iota
+	FmtDim
 	FmtItalic
 	FmtUnderline
 	FmtBlinking

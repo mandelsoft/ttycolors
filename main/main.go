@@ -7,6 +7,7 @@ import (
 )
 
 func demo() {
+	ctx := NewContext(true)
 	s := Sequence("normal")
 	fmt.Printf("%s\n", s)
 	fmt.Printf("%s\n", Bold("bold"))
@@ -19,6 +20,8 @@ func demo() {
 	fmt.Printf("%s\n", Sequence(BgYellow("yellow", Blue("blue"), "yellow"), "normal"))
 	fmt.Printf("%s\n", Sequence("normal", BgYellow("yellow", Blue("blue", Bold("blue bold", Italic("blue bold italic"), "blue bold")), "yellow"), "normal"))
 	fmt.Printf("%s\n", Blue("blue", Green("green"), Red("red"), "blue"))
+	fmt.Printf("%s\n", Bold("bold text with ", Dim("regular text"), " in between"))
+	fmt.Printf("%s\n", ctx.Sequence("start {", ctx.Dim("dim text with ", ctx.Bold("bold text"), " in between"), "} end"))
 
 	F := New(FmtBlue, FmtBgYellow, FmtBold, FmtStrikeThrough)
 

@@ -7,7 +7,7 @@ type String interface {
 }
 
 type Renderer interface {
-	Render(enabled bool, s *state) (*state, string)
+	Render(enabled bool, s state) (state, string)
 }
 
 type Composer interface {

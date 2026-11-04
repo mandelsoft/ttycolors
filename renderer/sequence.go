@@ -47,26 +47,26 @@ func (s *_Sequence) Append(a ...any) String {
 }
 
 func (s *_Sequence) String() string {
-	state, r := s.self.Render(s.enabled, nil)
-	return r + state.EmitEndFG() + state.EmitEndBG()
+	st, r := s.self.Render(s.enabled, nil)
+	return r + st.EmitEnds()
 }
 
-func (s *_Sequence) Render(enabled bool, state *state) (*state, string) {
+func (s *_Sequence) Render(enabled bool, st state) (state, string) {
 	sub := ""
 	r := ""
 	for _, e := range s.seq {
-		state, sub = render(enabled, state, e)
+		st, sub = render(enabled, st, e)
 		r += sub
 	}
-	return state, r
+	return st, r
 }
 
-func render(enabled bool, state *state, s any) (*state, string) {
+func render(enabled bool, st state, s any) (state, string) {
 	var r string
 
 	switch e := s.(type) {
 	case Renderer:
-		return e.Render(enabled, state)
+		return e.Render(enabled, st)
 	case string:
 		r = e
 	case []byte:
@@ -75,7 +75,7 @@ func render(enabled bool, state *state, s any) (*state, string) {
 		r = fmt.Sprintf("%v", e)
 	}
 	if enabled {
-		return state, state.RepeatAll() + r
+		return st, st.Repeat(nil) + r
 	}
-	return state, r
+	return st, r
 }

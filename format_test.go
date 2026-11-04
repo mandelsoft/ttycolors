@@ -1,6 +1,8 @@
 package ttycolors_test
 
 import (
+	"fmt"
+
 	. "github.com/mandelsoft/ttycolors"
 	"github.com/mandelsoft/ttycolors/ansi"
 	. "github.com/onsi/ginkgo/v2"
@@ -151,8 +153,9 @@ var _ = Describe("Format Test Environment", func() {
 		It("mixed", func() {
 			s := FmtBlue.String("blue", Bold(Green("bold green"), "bold blue"), Red("red"), "blue")
 			s.Enable()
+			fmt.Printf("\n%v\n", []byte(s.String()))
 			Expect(s.String()).To(Equal(ansi.Mode(ansi.COLOR_FG_BLUE) + "blue" +
-				ansi.Mode(ansi.MODE_BOLD) + ansi.Mode(ansi.COLOR_FG_GREEN) + "bold green" +
+				ansi.Mode(ansi.MODE_RESET_BOLD, ansi.MODE_BOLD) + ansi.Mode(ansi.COLOR_FG_GREEN) + "bold green" +
 				ansi.Mode(ansi.COLOR_FG_BLUE) + "bold blue" +
 				ansi.Mode(ansi.MODE_RESET_BOLD) + ansi.Mode(ansi.COLOR_FG_RED) + "red" +
 				ansi.Mode(ansi.COLOR_FG_BLUE) + "blue" +

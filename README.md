@@ -10,7 +10,7 @@ The library consists of three basic APIs:
 
 It supports the following ANSI output formats:
 - output modes:
-  - Bold
+  - Bold/Dim
   - Italic
   - Underline
   - Blinking
