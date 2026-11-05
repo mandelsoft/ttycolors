@@ -3,13 +3,13 @@ package renderer
 import (
 	"fmt"
 
-	"github.com/mandelsoft/goutils/optionutils"
+	"github.com/mandelsoft/ttycolors/ansi"
 )
 
 type _Sequence struct {
-	self    Renderer
-	enabled bool
-	seq     []any
+	Settings
+	self Renderer
+	seq  []any
 }
 
 var (
@@ -18,55 +18,50 @@ var (
 	_ ContextInfo = (*_Sequence)(nil)
 )
 
-func newSequence(self Renderer, enabled bool, nested []any) _Sequence {
+// newSequence creates a sequence with the given settings.
+func newSequence(self Renderer, settings Settings, nested []any) _Sequence {
 	return _Sequence{
-		self:    self,
-		enabled: enabled,
-		seq:     nested,
+		Settings: settings,
+		self:     self,
+		seq:      nested,
 	}
 }
 
-func Sequence(enabled bool, nested []any) String {
-	s := newSequence(nil, enabled, nested)
+// Sequence provides a String rendering a sequence of elements
+// with the given settings.
+func Sequence(settings Settings, nested []any) String {
+	s := newSequence(nil, settings, nested)
 	s.self = &s
 	return &s
 }
 
-func (s *_Sequence) IsEnabled() bool {
-	return s.enabled
-}
-
-func (s *_Sequence) Enable(m ...bool) {
-	s.enabled = optionutils.BoolOption(m...)
-}
-
 func (s *_Sequence) Append(a ...any) String {
-	r := Sequence(s.enabled, append([]any{s.self}, a...))
-	r.Enable(s.IsEnabled())
-	return r
+	return Sequence(s.Settings, append([]any{s.self}, a...))
 }
 
+// String renders the sequence. The settings of the
+// sequence are used for all nested elements.
 func (s *_Sequence) String() string {
-	st, r := s.self.Render(s.enabled, nil)
+	st, r := s.self.Render(s.Settings, state{})
 	return r + st.EmitEnds()
 }
 
-func (s *_Sequence) Render(enabled bool, st state) (state, string) {
+func (s *_Sequence) Render(cfg Settings, st state) (state, string) {
 	sub := ""
 	r := ""
 	for _, e := range s.seq {
-		st, sub = render(enabled, st, e)
+		st, sub = render(cfg, st, e)
 		r += sub
 	}
 	return st, r
 }
 
-func render(enabled bool, st state, s any) (state, string) {
+func render(cfg Settings, st state, s any) (state, string) {
 	var r string
 
 	switch e := s.(type) {
 	case Renderer:
-		return e.Render(enabled, st)
+		return e.Render(cfg, st)
 	case string:
 		r = e
 	case []byte:
@@ -74,8 +69,15 @@ func render(enabled bool, st state, s any) (state, string) {
 	default:
 		r = fmt.Sprintf("%v", e)
 	}
-	if enabled {
-		return st, st.Repeat(nil) + r
+	if r == "" {
+		// empty text does not require any formatting
+		return st, ""
 	}
-	return st, r
+	if cfg.IsEnabled() {
+		prefix := st.Repeat()
+		return st.Embedded(r), prefix + r
+	}
+	// output format sequences embedded in texts are removed,
+	// if output formats are disabled.
+	return st, ansi.Strip(r)
 }

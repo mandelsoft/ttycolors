@@ -115,3 +115,15 @@ func IdColor(id byte, s ...any) String {
 func BgIdColor(id byte, s ...any) String {
 	return defaultContext.BgIdColor(id, s...)
 }
+
+// UnderlineIdColor requires the feature FeatureUnderlineColor
+// for the default context, otherwise the color is ignored.
+func UnderlineIdColor(id byte, s ...any) String {
+	return defaultContext.UnderlineIdColor(id, s...)
+}
+
+// UnderlineRGBColor requires the feature FeatureUnderlineColor
+// for the default context, otherwise the color is ignored.
+func UnderlineRGBColor(r, g, b byte, s ...any) String {
+	return defaultContext.UnderlineRGBColor(r, g, b, s...)
+}

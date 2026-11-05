@@ -1,30 +1,35 @@
 package ttycolors
 
 import (
-	"bytes"
-
-	"github.com/mandelsoft/goutils/optionutils"
 	"github.com/mandelsoft/ttycolors/ansi"
 	"github.com/mandelsoft/ttycolors/renderer"
+	"github.com/modern-go/reflect2"
 )
-
-func containsCode(list []ansi.Code, code ansi.Code) bool {
-	for _, e := range list {
-		if bytes.Equal(e.Bytes(), code.Bytes()) {
-			return true
-		}
-	}
-	return false
-}
 
 type FormatInfo = *_FormatInfo
 
+// groupCode describes the code for a group.
+type groupCode struct {
+	code ansi.CodeSequence
+	// feature is the feature required for code.
+	feature Features
+	// fallback is used if the feature is not enabled.
+	fallback ansi.CodeSequence
+}
+
+// effective provides the code to use for the given features.
+func (c groupCode) effective(f Features) ansi.CodeSequence {
+	if f.Has(c.feature) {
+		return c.code
+	}
+	return c.fallback
+}
+
+// _FormatInfo describes a composed output format.
+// It keeps a code for every configured group.
 type _FormatInfo struct {
-	enabled   bool
-	modeStart []ansi.Code
-	modeEnd   []ansi.Code
-	fg        ansi.Code
-	bg        ansi.Code
+	renderer.Settings
+	codes map[*renderer.Group]groupCode
 }
 
 var (
@@ -32,64 +37,66 @@ var (
 	_ ContextInfo = (FormatInfo)(nil)
 )
 
-func (f *_FormatInfo) IsEnabled() bool {
-	return f.enabled
+func newGroupFormat(g *renderer.Group, c groupCode) FormatInfo {
+	return &_FormatInfo{
+		Settings: defaultContext.current(),
+		codes:    map[*renderer.Group]groupCode{g: c},
+	}
 }
 
-func (f *_FormatInfo) Enable(b ...bool) {
-	f.enabled = optionutils.BoolOption(b...)
-}
-
-func (f *_FormatInfo) Start() []byte {
-	var s []byte
-
-	if !f.enabled {
-		return nil
-	}
-	for _, c := range f.modeStart {
-		s = append(s, c.Bytes()...)
-	}
-	if f.fg != nil {
-		s = append(s, f.fg.Bytes()...)
-	}
-	if f.bg != nil {
-		s = append(s, f.bg.Bytes()...)
-	}
-	return []byte(ansi.Mode(ansi.Sequence(s)))
-}
-
-func (f *_FormatInfo) End() []byte {
-	var s []byte
-
-	if !f.enabled {
-		return nil
-	}
-	for _, c := range f.modeEnd {
-		s = append(s, c.Bytes()...)
-	}
-	if f.fg != nil {
-		s = append(s, ansi.COLOR_FG_DEFAULT.Bytes()...)
-	}
-	if f.bg != nil {
-		s = append(s, ansi.COLOR_BG_DEFAULT.Bytes()...)
-	}
-	return []byte(ansi.Mode(ansi.Sequence(s)))
-}
-
-func (f *_FormatInfo) Add(a FormatInfo) {
-	if a.bg != nil {
-		f.bg = a.bg
-	}
-	if a.fg != nil {
-		f.fg = a.fg
-	}
-	if len(a.modeStart) > 0 {
-		for i, c := range a.modeStart {
-			if !containsCode(f.modeStart, c) {
-				f.modeStart = append(f.modeStart, c)
-				f.modeEnd = append(f.modeEnd, a.modeEnd[i])
-			}
+// effectiveCodes provides the codes to use according to the
+// enabled features.
+func (f *_FormatInfo) effectiveCodes() map[*renderer.Group]ansi.CodeSequence {
+	r := map[*renderer.Group]ansi.CodeSequence{}
+	for g, c := range f.codes {
+		if e := c.effective(f.Features()); e != nil {
+			r[g] = e
 		}
+	}
+	return r
+}
+
+// Start provides the escape sequence establishing the format.
+func (f *_FormatInfo) Start() []byte {
+	if !f.IsEnabled() {
+		return nil
+	}
+	codes := f.effectiveCodes()
+	var seq []ansi.CodeSequence
+	for _, g := range renderer.Groups() {
+		seq = append(seq, codes[g])
+	}
+	return ansi.AppendModes(nil, seq...)
+}
+
+// End provides the escape sequence resetting all groups
+// configured by the format to the terminal default.
+func (f *_FormatInfo) End() []byte {
+	if !f.IsEnabled() {
+		return nil
+	}
+	codes := f.effectiveCodes()
+	var seq []ansi.CodeSequence
+	for _, g := range renderer.Groups() {
+		if codes[g] != nil {
+			seq = append(seq, g.Reset())
+		}
+	}
+	return ansi.AppendModes(nil, seq...)
+}
+
+// Add adds the settings of another format.
+// Settings for the same group replace the actual ones.
+// A nil format is ignored.
+func (f *_FormatInfo) Add(a FormatInfo) {
+	if a == nil || len(a.codes) == 0 {
+		return
+	}
+	if f.codes == nil {
+		f.codes = map[*renderer.Group]groupCode{}
+	}
+	for g, c := range a.codes {
+		f.codes[g] = c
 	}
 }
 
@@ -100,31 +107,30 @@ func (f *_FormatInfo) Format() FormatInfo {
 func (f *_FormatInfo) String(args ...any) renderer.String {
 	var r renderer.String
 
-	if len(f.modeStart) > 0 {
-		r = renderer.NewMode(f.enabled, ansi.Sequence{}.Append(f.modeStart...), ansi.Sequence{}.Append(f.modeEnd...), args)
-		args = []any{r}
-	}
-	if f.fg != nil {
-		r = renderer.NewFGColor(f.enabled, f.fg, args)
-		args = []any{r}
-	}
-	if f.bg != nil {
-		r = renderer.NewBGColor(f.enabled, f.bg, args)
+	for _, g := range renderer.Groups() {
+		if c, ok := f.codes[g]; ok {
+			r = renderer.NewFeatureFormat(f.Settings, g, c.feature, c.code, c.fallback, args)
+			args = []any{r}
+		}
 	}
 	if r == nil {
-		return renderer.Sequence(f.enabled, args)
+		return renderer.Sequence(f.Settings, args)
 	}
 	return r
 }
 
+// New provides a new composed output format using the
+// settings of the default context.
 func New(fmts ...FormatProvider) FormatInfo {
-	return newFormat(!NoColors, fmts...)
+	return newFormat(defaultContext.current(), fmts...)
 }
 
-func newFormat(enabled bool, fmts ...FormatProvider) FormatInfo {
-	r := &_FormatInfo{enabled: enabled}
+// newFormat provides a new composed output format with the
+// given settings.
+func newFormat(settings renderer.Settings, fmts ...FormatProvider) FormatInfo {
+	r := &_FormatInfo{Settings: settings}
 	for _, f := range fmts {
-		if f != nil {
+		if !reflect2.IsNil(f) {
 			r.Add(f.Format())
 		}
 	}
@@ -137,188 +143,180 @@ func Composer(fmts ...FormatProvider) renderer.ComposerFunc {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// FmtStandard is the standard font without bold or dim.
-var FmtStandard = &_FormatInfo{
-	enabled:   !NoColors,
-	modeStart: []ansi.Code{ansi.MODE_RESET_BOLD},
+// fmtGroup is a native output format providing
+// a code for a dedicated group.
+type fmtGroup struct {
+	group *renderer.Group
+	groupCode
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-type fmtMode byte
-
-var _ Format = (fmtMode)(0)
-
-func (c fmtMode) Format() FormatInfo {
-	reset := ansi.Simple(c)
-	if reset == ansi.MODE_DIM {
-		reset = ansi.MODE_BOLD
-	}
-	f := &_FormatInfo{
-		enabled: !NoColors,
-		modeEnd: []ansi.Code{ansi.MODE_RESET_BOLD + reset},
-	}
-	if c > 0 {
-		c++
-	}
-	f.modeStart = []ansi.Code{ansi.MODE_BOLD + ansi.Simple(c)}
-	return f
+func newFmtGroup(g *renderer.Group, c ansi.CodeSequence) fmtGroup {
+	return fmtGroup{g, groupCode{code: c}}
 }
 
-func (c fmtMode) String(args ...any) renderer.String {
-	return c.Format().String(args...)
+// newFeatureFmtGroup provides a format whose code requires
+// a feature. Without the feature, the fallback is used.
+func newFeatureFmtGroup(g *renderer.Group, f Features, c, fallback ansi.CodeSequence) fmtGroup {
+	return fmtGroup{g, groupCode{code: c, feature: f, fallback: fallback}}
 }
 
-const (
-	FmtBold fmtMode = iota
-	FmtDim
-	FmtItalic
-	FmtUnderline
-	FmtBlinking
-	fmtModeUnused6
-	FmtReverse
-	FmtInvisible
-	FmtStrikeThrough
+var _ Format = fmtGroup{}
+
+func (f fmtGroup) Format() FormatInfo {
+	return newGroupFormat(f.group, f.groupCode)
+}
+
+func (f fmtGroup) String(args ...any) renderer.String {
+	return f.Format().String(args...)
+}
+
+// render provides a String for the format using the given settings.
+func (f fmtGroup) render(settings renderer.Settings, args []any) String {
+	return renderer.NewFeatureFormat(settings, f.group, f.feature, f.code, f.fallback, args)
+}
+
+// Bold and Dim are handled as alternative values of the
+// highlight group (together with NonHighlighted). Because bold and dim
+// are additive on many terminals, they always reset the group first.
+var (
+	// FmtNonHighlighted is the standard font without bold or dim.
+	FmtNonHighlighted = newFmtGroup(renderer.Highlight, ansi.MODE_RESET_BOLD)
+	FmtBold           = newFmtGroup(renderer.Highlight, ansi.NewCodeSequence(ansi.MODE_RESET_BOLD, ansi.MODE_BOLD))
+	FmtDim            = newFmtGroup(renderer.Highlight, ansi.NewCodeSequence(ansi.MODE_RESET_BOLD, ansi.MODE_DIM))
+
+	FmtItalic        = newFmtGroup(renderer.Italic, ansi.MODE_ITALIC)
+	FmtUnderline     = newFmtGroup(renderer.Underline, ansi.MODE_UNDERLINE)
+	FmtBlinking      = newFmtGroup(renderer.Blinking, ansi.MODE_BLINK)
+	FmtReverse       = newFmtGroup(renderer.Reverse, ansi.MODE_REVERSE)
+	FmtInvisible     = newFmtGroup(renderer.Invisible, ansi.MODE_INVIS)
+	FmtStrikeThrough = newFmtGroup(renderer.StrikeThrough, ansi.MODE_STRIKE)
+
+	FmtNonItalic        = newFmtGroup(renderer.Italic, ansi.MODE_RESET_ITALIC)
+	FmtNonUnderline     = newFmtGroup(renderer.Underline, ansi.MODE_RESET_UNDERLINE)
+	FmtNonBlinking      = newFmtGroup(renderer.Blinking, ansi.MODE_RESET_BLINK)
+	FmtNonReverse       = newFmtGroup(renderer.Reverse, ansi.MODE_RESET_REVERSE)
+	FmtNonInvisible     = newFmtGroup(renderer.Invisible, ansi.MODE_RESET_INVIS)
+	FmtNonStrikeThrough = newFmtGroup(renderer.StrikeThrough, ansi.MODE_RESET_STRIKE)
+)
+
+// Underline styles require the feature FeatureUnderlineStyles.
+// Without it, a single underline is used.
+// Terminals supporting underline styles do not necessarily support all
+// of them. For example, GNOME Terminal (VTE 0.60) renders dotted and
+// dashed underlines like curly underlines.
+var (
+	FmtDoubleUnderline = newFeatureFmtGroup(renderer.Underline, FeatureUnderlineStyles, ansi.UNDERLINE_DOUBLE, ansi.MODE_UNDERLINE)
+	FmtCurlyUnderline  = newFeatureFmtGroup(renderer.Underline, FeatureUnderlineStyles, ansi.UNDERLINE_CURLY, ansi.MODE_UNDERLINE)
+	FmtDottedUnderline = newFeatureFmtGroup(renderer.Underline, FeatureUnderlineStyles, ansi.UNDERLINE_DOTTED, ansi.MODE_UNDERLINE)
+	FmtDashedUnderline = newFeatureFmtGroup(renderer.Underline, FeatureUnderlineStyles, ansi.UNDERLINE_DASHED, ansi.MODE_UNDERLINE)
 )
 
 ////////////////////////////////////////////////////////////////////////////////
 
-type fmtFgColor byte
+// Standard foreground colors.
+var (
+	FmtBlack   = newFmtGroup(renderer.FG, ansi.COLOR_FG_BLACK)
+	FmtRed     = newFmtGroup(renderer.FG, ansi.COLOR_FG_RED)
+	FmtGreen   = newFmtGroup(renderer.FG, ansi.COLOR_FG_GREEN)
+	FmtYellow  = newFmtGroup(renderer.FG, ansi.COLOR_FG_YELLOW)
+	FmtBlue    = newFmtGroup(renderer.FG, ansi.COLOR_FG_BLUE)
+	FmtMagenta = newFmtGroup(renderer.FG, ansi.COLOR_FG_MAGENTA)
+	FmtCyan    = newFmtGroup(renderer.FG, ansi.COLOR_FG_CYAN)
+	FmtWhite   = newFmtGroup(renderer.FG, ansi.COLOR_FG_WHITE)
+)
 
-var _ Format = (fmtFgColor)(0)
+// Standard background colors.
+var (
+	FmtBgBlack   = newFmtGroup(renderer.BG, ansi.COLOR_BG_BLACK)
+	FmtBgRed     = newFmtGroup(renderer.BG, ansi.COLOR_BG_RED)
+	FmtBgGreen   = newFmtGroup(renderer.BG, ansi.COLOR_BG_GREEN)
+	FmtBgYellow  = newFmtGroup(renderer.BG, ansi.COLOR_BG_YELLOW)
+	FmtBgBlue    = newFmtGroup(renderer.BG, ansi.COLOR_BG_BLUE)
+	FmtBgMagenta = newFmtGroup(renderer.BG, ansi.COLOR_BG_MAGENTA)
+	FmtBgCyan    = newFmtGroup(renderer.BG, ansi.COLOR_BG_CYAN)
+	FmtBgWhite   = newFmtGroup(renderer.BG, ansi.COLOR_BG_WHITE)
+)
 
-func (c fmtFgColor) Format() FormatInfo {
-	return &_FormatInfo{
-		enabled: !NoColors,
-		fg:      ansi.COLOR_FG_BLACK + ansi.Simple(c),
-	}
-}
+// Bright foreground colors.
+var (
+	FmtBrightBlack   = newFmtGroup(renderer.FG, ansi.COLOR_FG_BRIGHT_BLACK)
+	FmtBrightRed     = newFmtGroup(renderer.FG, ansi.COLOR_FG_BRIGHT_RED)
+	FmtBrightGreen   = newFmtGroup(renderer.FG, ansi.COLOR_FG_BRIGHT_GREEN)
+	FmtBrightYellow  = newFmtGroup(renderer.FG, ansi.COLOR_FG_BRIGHT_YELLOW)
+	FmtBrightBlue    = newFmtGroup(renderer.FG, ansi.COLOR_FG_BRIGHT_BLUE)
+	FmtBrightMagenta = newFmtGroup(renderer.FG, ansi.COLOR_FG_BRIGHT_MAGENTA)
+	FmtBrightCyan    = newFmtGroup(renderer.FG, ansi.COLOR_FG_BRIGHT_CYAN)
+	FmtBrightWhite   = newFmtGroup(renderer.FG, ansi.COLOR_FG_BRIGHT_WHITE)
+)
 
-func (c fmtFgColor) String(args ...any) renderer.String {
-	return c.Format().String(args...)
-}
-
-const (
-	FmtBlack fmtFgColor = iota
-	FmtRed
-	FmtGreen
-	FmtYellow
-	FmtBlue
-	FmtMagenta
-	FmtCyan
-	FmtWhite
+// Bright background colors.
+var (
+	FmtBgBrightBlack   = newFmtGroup(renderer.BG, ansi.COLOR_BG_BRIGHT_BLACK)
+	FmtBgBrightRed     = newFmtGroup(renderer.BG, ansi.COLOR_BG_BRIGHT_RED)
+	FmtBgBrightGreen   = newFmtGroup(renderer.BG, ansi.COLOR_BG_BRIGHT_GREEN)
+	FmtBgBrightYellow  = newFmtGroup(renderer.BG, ansi.COLOR_BG_BRIGHT_YELLOW)
+	FmtBgBrightBlue    = newFmtGroup(renderer.BG, ansi.COLOR_BG_BRIGHT_BLUE)
+	FmtBgBrightMagenta = newFmtGroup(renderer.BG, ansi.COLOR_BG_BRIGHT_MAGENTA)
+	FmtBgBrightCyan    = newFmtGroup(renderer.BG, ansi.COLOR_BG_BRIGHT_CYAN)
+	FmtBgBrightWhite   = newFmtGroup(renderer.BG, ansi.COLOR_BG_BRIGHT_WHITE)
 )
 
 ////////////////////////////////////////////////////////////////////////////////
 
-type fmtBgColor byte
-
-var _ Format = (fmtBgColor)(0)
-
-func (c fmtBgColor) Format() FormatInfo {
-	return &_FormatInfo{
-		enabled: !NoColors,
-		bg:      ansi.COLOR_BG_BLACK + ansi.Simple(c),
-	}
+func fmtRGBColor(r, g, b byte) fmtGroup {
+	return newFmtGroup(renderer.FG, ansi.Code_FG_RGB(r, g, b))
 }
 
-func (c fmtBgColor) String(args ...any) renderer.String {
-	return c.Format().String(args...)
+func fmtBgRGBColor(r, g, b byte) fmtGroup {
+	return newFmtGroup(renderer.BG, ansi.Code_BG_RGB(r, g, b))
 }
 
-const (
-	FmtBgBlack fmtBgColor = iota
-	FmtBgRed
-	FmtBgGreen
-	FmtBgYellow
-	FmtBgBlue
-	FmtBgMagenta
-	FmtBgCyan
-	FmtBgWhite
-)
-
-////////////////////////////////////////////////////////////////////////////////
-
-type fmtFgBrightColor byte
-
-var _ Format = (fmtFgBrightColor)(0)
-
-func (c fmtFgBrightColor) Format() FormatInfo {
-	return &_FormatInfo{
-		enabled: !NoColors,
-		fg:      ansi.COLOR_FG_BRIGHT_BLACK + ansi.Simple(c),
-	}
+func fmtIdColor(id byte) fmtGroup {
+	return newFmtGroup(renderer.FG, ansi.Code_FG_ID(id))
 }
 
-func (c fmtFgBrightColor) String(args ...any) renderer.String {
-	return c.Format().String(args...)
+func fmtBgIdColor(id byte) fmtGroup {
+	return newFmtGroup(renderer.BG, ansi.Code_BG_ID(id))
 }
 
-const (
-	FmtBrightBlack fmtFgBrightColor = iota
-	FmtBrightRed
-	FmtBrightGreen
-	FmtBrightYellow
-	FmtBrightBlue
-	FmtBrightMagenta
-	FmtBrightCyan
-	FmtBrightWhite
-)
-
-////////////////////////////////////////////////////////////////////////////////
-
-type fmtBgBrightColor byte
-
-var _ Format = (fmtBgBrightColor)(0)
-
-func (c fmtBgBrightColor) Format() FormatInfo {
-	return &_FormatInfo{
-		enabled: !NoColors,
-		bg:      ansi.COLOR_BG_BRIGHT_BLACK + ansi.Simple(c),
-	}
+func fmtUnderlineIdColor(id byte) fmtGroup {
+	return newFeatureFmtGroup(renderer.UnderlineColor, FeatureUnderlineColor, ansi.Code_UL_ID(id), nil)
 }
 
-func (c fmtBgBrightColor) String(args ...any) renderer.String {
-	return c.Format().String(args...)
+func fmtUnderlineRGBColor(r, g, b byte) fmtGroup {
+	return newFeatureFmtGroup(renderer.UnderlineColor, FeatureUnderlineColor, ansi.Code_UL_RGB(r, g, b), nil)
 }
 
-const (
-	FmtBgBrightBlack fmtBgBrightColor = iota
-	FmtBgBrightRed
-	FmtBgBrightGreen
-	FmtBgBrightYellow
-	FmtBgBrightBlue
-	FmtBgBrightMagenta
-	FmtBgBrightCyan
-	FmtBgBrightWhite
-)
-
-////////////////////////////////////////////////////////////////////////////////
-
+// FmtRGBColor provides a foreground RGB color.
 func FmtRGBColor(r, g, b byte) FormatInfo {
-	return &_FormatInfo{
-		enabled: !NoColors,
-		fg:      ansi.COLOR_FG_RGB.AppendBytes(r, g, b),
-	}
+	return fmtRGBColor(r, g, b).Format()
 }
 
+// FmtBgRGBColor provides a background RGB color.
 func FmtBgRGBColor(r, g, b byte) FormatInfo {
-	return &_FormatInfo{
-		enabled: !NoColors,
-		bg:      ansi.COLOR_BG_RGB.AppendBytes(r, g, b),
-	}
+	return fmtBgRGBColor(r, g, b).Format()
 }
 
+// FmtIdColor provides a foreground color id.
 func FmtIdColor(id byte) FormatInfo {
-	return &_FormatInfo{
-		enabled: !NoColors,
-		fg:      ansi.COLOR_FG_ID.AppendBytes(id),
-	}
+	return fmtIdColor(id).Format()
 }
 
+// FmtBgIdColor provides a background color id.
 func FmtBgIdColor(id byte) FormatInfo {
-	return &_FormatInfo{
-		enabled: !NoColors,
-		bg:      ansi.COLOR_BG_ID.AppendBytes(id),
-	}
+	return fmtBgIdColor(id).Format()
+}
+
+// FmtUnderlineIdColor provides an underline color id.
+// It requires the feature FeatureUnderlineColor, otherwise
+// it is ignored.
+func FmtUnderlineIdColor(id byte) FormatInfo {
+	return fmtUnderlineIdColor(id).Format()
+}
+
+// FmtUnderlineRGBColor provides an underline RGB color.
+// It requires the feature FeatureUnderlineColor, otherwise
+// it is ignored.
+func FmtUnderlineRGBColor(r, g, b byte) FormatInfo {
+	return fmtUnderlineRGBColor(r, g, b).Format()
 }

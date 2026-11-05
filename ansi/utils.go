@@ -2,75 +2,12 @@ package ansi
 
 import (
 	"fmt"
-	"slices"
-	"strconv"
-	"strings"
 	"unicode/utf8"
-
-	"github.com/mandelsoft/goutils/sliceutils"
 )
-
-func CodeToString(i Code) string {
-	return strings.Join(sliceutils.Transform(i.Bytes(), ByteToString), ";")
-}
-
-func ByteToString(i byte) string {
-	return strconv.Itoa(int(i))
-}
-
-// Mode provides an escape sequence for a sequence of output
-// format codes.
-// Nil and empty codes are ignored. If only such codes are given,
-// the result is empty. Without any code the result is the
-// sequence resetting all modes.
-func Mode(args ...Code) string {
-	var params []string
-	for _, c := range args {
-		if c != nil && len(c.Bytes()) > 0 {
-			params = append(params, CodeToString(c))
-		}
-	}
-	if len(params) == 0 && len(args) > 0 {
-		return ""
-	}
-	return CSI + strings.Join(params, ";") + "m"
-}
-
-// Code represents a sequence of Control Sequence Introducer arguments
-// for Select Graphic Rendition parameters.
-type Code interface {
-	Bytes() []byte
-}
-
-// Simple is a Code consisting of a single argument.
-type Simple byte
-
-func (s Simple) Bytes() []byte {
-	return []byte{byte(s)}
-}
-
-// Sequence is a Code consisting of a sequence of arguments.
-type Sequence []byte
-
-func (s Sequence) Bytes() []byte {
-	return []byte(s)
-}
-func (s Sequence) Append(codes ...Code) Sequence {
-	seq := slices.Clone(s)
-	for _, c := range codes {
-		if c != nil {
-			seq = append(seq, c.Bytes()...)
-		}
-	}
-	return Sequence(seq)
-}
-
-func (s Sequence) AppendBytes(codes ...byte) Sequence {
-	return append(slices.Clone(s), codes...)
-}
 
 // EscapeLength returns the byte length for an ANSI output format escape sequence
 // if the data starts with such a prefix.
+// Other control sequences are not recognized (see package documentation).
 func EscapeLength(data []byte) int {
 	l, _ := ScanSequence(data)
 	return l
@@ -155,6 +92,8 @@ func CharIndexBefore(s string, idx int) int {
 
 // CharLen determines the number of runes
 // in a string containing ANSI code sequences.
+// Only output format sequences are ignored, other control
+// sequences are counted as text (see package documentation).
 func CharLen(s string) int {
 	data := []byte(s)
 	cnt := 0
@@ -191,6 +130,7 @@ func ByteIndex(data []byte, c rune) int {
 }
 
 // Strip removes all ANSI output format sequences from a string.
+// Other control sequences are kept (see package documentation).
 func Strip(s string) string {
 	data := []byte(s)
 	i := 0

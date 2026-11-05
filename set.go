@@ -2,31 +2,28 @@ package ttycolors
 
 import (
 	"io"
-	"os"
 )
 
+// Set applies the given formats to the standard output
+// using the settings of the default context (see TTYContext.Set).
 func Set(f ...FormatProvider) error {
-	return set(os.Stdout, New(f...))
+	return defaultContext.Set(f...)
 }
 
+// SetFor applies the given formats to the given writer
+// using the settings of the default context (see TTYContext.SetFor).
 func SetFor(w io.Writer, f ...FormatProvider) error {
-	return set(w, New(f...))
+	return defaultContext.SetFor(w, f...)
 }
 
-func set(w io.Writer, f FormatProvider) error {
-	_, err := w.Write(f.Format().Start())
-	return err
-}
-
+// UnSet reverts the settings of the given formats for the standard output
+// using the settings of the default context (see TTYContext.UnSet).
 func UnSet(f ...FormatProvider) error {
-	return unset(os.Stdout, New(f...))
+	return defaultContext.UnSet(f...)
 }
 
+// UnSetFor reverts the settings of the given formats for the given writer
+// using the settings of the default context (see TTYContext.UnSetFor).
 func UnSetFor(w io.Writer, f ...FormatProvider) error {
-	return unset(w, New(f...))
-}
-
-func unset(w io.Writer, f FormatProvider) error {
-	_, err := w.Write(f.Format().End())
-	return err
+	return defaultContext.UnSetFor(w, f...)
 }
