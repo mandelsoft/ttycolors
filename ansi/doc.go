@@ -84,11 +84,13 @@
 //
 // # Limitations
 //
-//   - Only output format sequences (ESC [ ... m) are recognized.
-//     The string functions (CharLen, SubString, SplitAt, Strip, ...)
-//     treat all other control sequences, like cursor movements (ESC [ 2 A)
-//     or erasing lines (ESC [ 2 K), as regular text. For example,
-//     CharLen counts ESC [ 2 K as 4 runes.
+//   - Only the 7-bit forms of escape sequences are recognized. The 8-bit
+//     forms of the control functions (for example 0x9B for CSI) are
+//     treated as text, because those bytes are used by UTF-8 encoded
+//     characters.
+//   - Escape sequences, which are no output format sequences (for example
+//     cursor movements), are only recognized as such (S_CONTROL). Their
+//     effect on the terminal is not interpreted.
 //   - The scanner maps code 21 (MODE_DOUBLE_UNDERLINE) to S_UNDERLINE (doubly underlined according
 //     to ECMA-48). Some terminals, for example the Linux console,
 //     interpret it as resetting bold, instead.

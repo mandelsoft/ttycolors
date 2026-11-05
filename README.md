@@ -428,24 +428,29 @@ seq.Bytes()                                                          // "3;38;5;
 
 ### Scanning Escape Sequences
 
-- `ScanSequence(data)` detects a leading output format sequence and returns its byte length
+- `ScanSequence(data)` detects a leading escape sequence and returns its byte length
   together with the output format areas affected by it (type `Covered`, for example
-  `S_HIGHLIGHT`, `S_FG_COLOR` or `S_UNDERLINE`). Other control sequences are not detected.
+  `S_HIGHLIGHT`, `S_FG_COLOR` or `S_UNDERLINE`). All escape sequences of ECMA-48 are
+  recognized (control sequences like cursor movements, control strings like window titles
+  or hyperlinks, and other escape sequences). For sequences, which are no output format
+  sequences, `S_CONTROL` is returned.
 - `ScanSequenceEffect(data)` and `ScanEffect(s)` work like `ScanSequence` and `Scan`, but provide
   the effect (type `Effect`): the areas set to a value (`Set`) and the areas reset to the terminal
   default (`Reset`). The codes are applied in order, for example `ESC[1mbold ESC[22m` has the
   effect of resetting the highlight area.
-- `Scan(s)` returns the union of the areas affected by all output format sequences in a string.
+- `Scan(s)` returns the union of the areas affected by all escape sequences in a string,
+  including `S_CONTROL`, if other control sequences are found.
   A sequence resetting all modes (`ESC[0m` or `ESC[m`) affects all areas (`S_ALL`).
-  Therefore, the result is `S_ALL` for every string containing such a sequence.
+  Therefore, the result contains `S_ALL` for every string containing such a sequence.
 
 ### Strings with Escape Sequences
 
-The following functions handle strings containing output format sequences
-based on runes, ignoring the escape sequences:
+The following functions handle strings containing escape sequences
+based on runes, ignoring all escape sequences:
 
 - `CharLen(s)` provides the number of runes.
-- `Strip(s)` removes all output format sequences.
+- `Strip(s)` removes all output format sequences, other control sequences are kept.
+- `StripAll(s)` removes all escape sequences.
 - `CharIndex(s, n)` and `CharIndexBefore(s, n)` provide the byte index of the n-th rune
   excluding or including the preceding escape sequences.
 - `SplitAt(s, n)` splits a string after the n-th rune.
@@ -468,11 +473,11 @@ ansi.Scan(s)                 // ansi.S_ALL, because ESC[0m resets all areas
 
 ### Limitations
 
-- Only output format sequences (`ESC [ ... m`) are recognized.
-  The string functions (`CharLen`, `SubString`, `SplitAt`, `Strip`, ...)
-  treat all other control sequences, like cursor movements (`ESC [ 2 A`)
-  or erasing lines (`ESC [ 2 K`), as regular text. For example,
-  `CharLen` counts `ESC [ 2 K` as 4 runes.
+- Only the 7-bit forms of escape sequences are recognized. The 8-bit forms of the control
+  functions (for example `0x9B` for CSI) are treated as text, because those bytes are used
+  by UTF-8 encoded characters.
+- Escape sequences, which are no output format sequences (for example cursor movements),
+  are only recognized as such (`S_CONTROL`). Their effect on the terminal is not interpreted.
 - The scanner maps code 21 (`MODE_DOUBLE_UNDERLINE`) to `S_UNDERLINE` (doubly underlined according to ECMA-48).
   Some terminals, for example the Linux console, interpret it as resetting bold, instead.
 - The scanner cannot interpret parameters following an extended color (38, 48, 58)

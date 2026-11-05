@@ -3,13 +3,15 @@ package ansi
 import (
 	"bytes"
 	"fmt"
+	"math/bits"
 	"strconv"
 	"strings"
 )
 
 // Covered is a bit set describing the output format areas
-// affected by an ANSI code sequence.
-type Covered int
+// affected by an ANSI code sequence. The topmost bit (S_CONTROL)
+// indicates control sequences, which are no output format sequences.
+type Covered uint
 
 const (
 	S_HIGHLIGHT Covered = 1 << iota
@@ -32,6 +34,12 @@ const (
 	S_COLOR = S_FG_COLOR | S_BG_COLOR | S_UL_COLOR
 	// S_ALL covers all output format areas (used for a reset of all modes).
 	S_ALL = S_HIGHLIGHT | S_ITALIC | S_UNDERLINE | S_BLINK | S_REVERSE | S_INVIS | S_STRIKE | S_OVERLINE | S_COLOR
+
+	// S_CONTROL indicates escape sequences, which are no output format
+	// sequences, for example cursor movements. It is not an output format
+	// area and therefore not part of S_ALL. It uses the topmost bit, so that
+	// new output format areas can be added without changing it.
+	S_CONTROL Covered = 1 << (bits.UintSize - 1)
 )
 
 var coveredNames = []struct {
@@ -49,19 +57,21 @@ var coveredNames = []struct {
 	{S_BG_COLOR, "S_BG_COLOR"},
 	{S_UL_COLOR, "S_UL_COLOR"},
 	{S_OVERLINE, "S_OVERLINE"},
+	{S_CONTROL, "S_CONTROL"},
 }
 
 // String provides the names of the covered areas separated by |,
 // for example S_HIGHLIGHT|S_FG_COLOR. S_NONE and S_ALL are
-// provided by their names.
+// provided by their names, for example S_ALL|S_CONTROL.
 func (c Covered) String() string {
-	switch c {
-	case S_NONE:
+	if c == S_NONE {
 		return "S_NONE"
-	case S_ALL:
-		return "S_ALL"
 	}
 	var names []string
+	if c&S_ALL == S_ALL {
+		names = append(names, "S_ALL")
+		c &^= S_ALL
+	}
 	for _, e := range coveredNames {
 		if c&e.area != 0 {
 			names = append(names, e.name)
@@ -69,7 +79,7 @@ func (c Covered) String() string {
 		}
 	}
 	if c != 0 {
-		names = append(names, fmt.Sprintf("0x%x", int(c)))
+		names = append(names, fmt.Sprintf("0x%x", uint(c)))
 	}
 	return strings.Join(names, "|")
 }
@@ -106,15 +116,24 @@ func (e Effect) Then(o Effect) Effect {
 	}
 }
 
-// ScanSequence detects a leading ANSI output format sequence
-// (Select Graphic Rendition, ESC [ ... m) in data.
-// Other control sequences are not recognized.
-// Code 21 (MODE_DOUBLE_UNDERLINE) is mapped to S_UNDERLINE (doubly underlined according to
-// ECMA-48), although some terminals interpret it as resetting bold.
-// It returns the byte length of the complete sequence
-// and the output format areas affected by it.
-// If data does not start with a complete output format sequence,
-// the length is 0.
+// ScanSequence detects a leading escape sequence in data.
+// It returns the byte length of the complete sequence and the output
+// format areas affected by it. All escape sequences in their 7-bit
+// form according to ECMA-48 are recognized:
+//   - control sequences (ESC [ ... final byte),
+//   - control strings (OSC, DCS, SOS, PM and APC, for example
+//     ESC ] ... terminated by ST (ESC \) or BEL),
+//   - other escape sequences (ESC intermediate bytes final byte,
+//     for example ESC 7 or ESC ( B).
+//
+// Only output format sequences (Select Graphic Rendition, ESC [ ... m)
+// affect output format areas, for all other sequences S_CONTROL is
+// returned. The 8-bit forms of the control functions are not recognized,
+// because those bytes are used by UTF-8 encoded characters.
+// If data does not start with a complete escape sequence, the length is 0.
+//
+// Code 21 (MODE_DOUBLE_UNDERLINE) is mapped to S_UNDERLINE (doubly underlined
+// according to ECMA-48), although some terminals interpret it as resetting bold.
 // Parameters following an extended color with an unknown
 // color kind cannot be interpreted and are ignored.
 func ScanSequence(data []byte) (int, Covered) {
@@ -122,33 +141,117 @@ func ScanSequence(data []byte) (int, Covered) {
 	return l, e.Covered()
 }
 
+// controlEffect is the effect of a sequence, which is no
+// output format sequence.
+var controlEffect = Effect{Set: S_CONTROL}
+
 // ScanSequenceEffect works like ScanSequence, but provides the effect
 // of the sequence: the areas set to a value and the areas reset to the
 // terminal default. The codes of the sequence are applied in order,
 // for example, 1;0 resets all areas, 0;1 resets all areas but sets
-// the highlight area.
+// the highlight area. For sequences, which are no output format
+// sequences, S_CONTROL is set.
 func ScanSequenceEffect(data []byte) (int, Effect) {
-	if len(data) < 3 || data[0] != '\x1b' || data[1] != '[' {
+	if len(data) < 2 || data[0] != '\x1b' {
 		return 0, Effect{}
 	}
-	for i := 2; i < len(data); i++ {
-		c := data[i]
-		if c == 'm' {
-			return i + 1, sgrEffect(data[2:i])
+	switch c := data[1]; {
+	case c == '[':
+		return scanControlSequence(data)
+	case c == ']' || c == 'P' || c == 'X' || c == '^' || c == '_':
+		return scanControlString(data)
+	case isIntermediateByte(c):
+		for i := 2; i < len(data); i++ {
+			switch b := data[i]; {
+			case isIntermediateByte(b):
+			case isEscapeFinalByte(b):
+				return i + 1, controlEffect
+			default:
+				return 0, Effect{}
+			}
 		}
-		if !isSGRParameterByte(c) {
+	case isEscapeFinalByte(c):
+		return 2, controlEffect
+	}
+	return 0, Effect{}
+}
+
+// scanControlSequence scans a control sequence (CSI parameter bytes,
+// intermediate bytes, final byte).
+func scanControlSequence(data []byte) (int, Effect) {
+	i := 2
+	for i < len(data) && isParameterByte(data[i]) {
+		i++
+	}
+	params := data[2:i]
+	f := i
+	for f < len(data) && isIntermediateByte(data[f]) {
+		f++
+	}
+	if f >= len(data) || !isFinalByte(data[f]) {
+		return 0, Effect{}
+	}
+	if data[f] == 'm' && f == i && isSGRParameters(params) {
+		return f + 1, sgrEffect(params)
+	}
+	return f + 1, controlEffect
+}
+
+// scanControlString scans a control string terminated by
+// ST (ESC \) or BEL.
+func scanControlString(data []byte) (int, Effect) {
+	for i := 2; i < len(data); i++ {
+		switch data[i] {
+		case '\a':
+			return i + 1, controlEffect
+		case '\x1b':
+			if i+1 < len(data) && data[i+1] == '\\' {
+				return i + 2, controlEffect
+			}
 			return 0, Effect{}
 		}
 	}
 	return 0, Effect{}
 }
 
-// Scan scans a complete string for ANSI output format sequences
+// isParameterByte checks for a parameter byte of a control sequence [ECMA-48].
+func isParameterByte(c byte) bool {
+	return c >= '0' && c <= '?' // 0x30-0x3F
+}
+
+// isIntermediateByte checks for an intermediate byte of an escape
+// or control sequence [ECMA-48].
+func isIntermediateByte(c byte) bool {
+	return c >= ' ' && c <= '/' // 0x20-0x2F
+}
+
+// isFinalByte checks for the final byte of a control sequence [ECMA-48].
+func isFinalByte(c byte) bool {
+	return c >= '@' && c <= '~' // 0x40-0x7E
+}
+
+// isEscapeFinalByte checks for the final byte of an escape sequence
+// (other than a control sequence or control string) [ECMA-48].
+func isEscapeFinalByte(c byte) bool {
+	return c >= '0' && c <= '~' // 0x30-0x7E
+}
+
+func isSGRParameters(params []byte) bool {
+	for _, c := range params {
+		if !isSGRParameterByte(c) {
+			return false
+		}
+	}
+	return true
+}
+
+// Scan scans a complete string for escape sequences
 // (see ScanSequence) and returns the union of the output format
-// areas affected by all found sequences.
+// areas affected by all found sequences. S_CONTROL is included,
+// if other control sequences are found.
 // A sequence resetting all modes (ESC[0m or ESC[m) affects all
-// areas (S_ALL), therefore the result is S_ALL for every string
-// containing such a sequence.
+// areas (S_ALL), therefore the result contains S_ALL for every
+// string containing such a sequence.
 func Scan(s string) Covered {
 	var covered Covered
 
@@ -167,8 +270,9 @@ func Scan(s string) Covered {
 	}
 }
 
-// ScanEffect scans a complete string for ANSI output format sequences
+// ScanEffect scans a complete string for escape sequences
 // and provides their combined effect (see ScanSequenceEffect).
+// S_CONTROL is set, if other control sequences are found.
 // The sequences are applied in order, so that, for example,
 // ESC[1mbold ESC[22m has the effect of resetting the highlight area.
 func ScanEffect(s string) Effect {

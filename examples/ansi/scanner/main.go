@@ -16,11 +16,13 @@ func main() {
 	p.Call(`ansi.ScanSequence([]byte(s))`, show.R2(ansi.ScanSequence([]byte(s)))...)
 	p.Call(`ansi.ScanSequence([]byte("\x1b[38;5;208;4:3m"))`, show.R2(ansi.ScanSequence([]byte("\x1b[38;5;208;4:3m")))...)
 	p.Call(`ansi.ScanSequence([]byte("\x1b[2K"))`, show.R2(ansi.ScanSequence([]byte("\x1b[2K")))...)
+	p.Call(`ansi.ScanSequence([]byte("\x1b]0;title\a"))`, show.R2(ansi.ScanSequence([]byte("\x1b]0;title\a")))...)
 	p.Call(`ansi.ScanSequence([]byte("text"))`, show.R2(ansi.ScanSequence([]byte("text")))...)
 
 	p.Title("complete strings")
 	p.Call(`ansi.Scan(s)`, ansi.Scan(s))
 	p.Call(`ansi.Scan("\x1b[1mbold\x1b[22m and \x1b[3mitalic\x1b[23m")`, ansi.Scan("\x1b[1mbold\x1b[22m and \x1b[3mitalic\x1b[23m"))
+	p.Call(`ansi.Scan("\x1b[2K\x1b[3mitalic\x1b[23m")`, ansi.Scan("\x1b[2K\x1b[3mitalic\x1b[23m"))
 
 	p.Title("effects: areas set and reset")
 	p.Call(`ansi.ScanSequenceEffect([]byte("\x1b[0;1m"))`, show.R2(ansi.ScanSequenceEffect([]byte("\x1b[0;1m")))...)

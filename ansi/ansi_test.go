@@ -43,16 +43,23 @@ var _ = Describe("Ansi Test Environment", func() {
 		Expect(func() { ansi.SubString(s, 1, -2) }).To(Panic())
 		Expect(func() { ansi.SubString(s, -1, -1) }).To(Panic())
 	})
-	Context("limitations", func() {
+	Context("control sequences", func() {
 		erase := "\x1b[2K"
+		title := "\x1b]0;title\a"
 
-		It("counts other control sequences as text", func() {
-			Expect(ansi.CharLen(erase + "ab")).To(Equal(6))
-			Expect(ansi.EscapeLength([]byte(erase))).To(Equal(0))
+		It("are ignored for runes", func() {
+			Expect(ansi.CharLen(erase + "ab" + title)).To(Equal(2))
+			Expect(ansi.EscapeLength([]byte(erase))).To(Equal(4))
+			Expect(ansi.SubString(erase+"abc"+title+"d", 1, 4)).To(Equal("bc" + title + "d"))
+			Expect(ansi.ByteIndex([]byte(erase+"ab"), 'b')).To(Equal(5))
 		})
 
-		It("keeps other control sequences when stripping", func() {
-			Expect(ansi.Strip(erase + ansi.Mode(ansi.MODE_BOLD) + "ab")).To(Equal(erase + "ab"))
+		It("are kept when stripping output formats", func() {
+			Expect(ansi.Strip(erase + ansi.Mode(ansi.MODE_BOLD) + "ab" + title)).To(Equal(erase + "ab" + title))
+		})
+
+		It("are removed when stripping all", func() {
+			Expect(ansi.StripAll(erase + ansi.Mode(ansi.MODE_BOLD) + "äb" + title + ansi.Mode())).To(Equal("äb"))
 		})
 	})
 	It("SubString invalid range", func() {
@@ -69,6 +76,7 @@ var _ = Describe("Ansi Test Environment", func() {
 	It("EscapeLength", func() {
 		Expect(ansi.EscapeLength([]byte("\x1b[mx"))).To(Equal(3))
 		Expect(ansi.EscapeLength([]byte("\x1b[38:5:1mx"))).To(Equal(9))
-		Expect(ansi.EscapeLength([]byte("\x1b[2Kx"))).To(Equal(0))
+		Expect(ansi.EscapeLength([]byte("\x1b[2Kx"))).To(Equal(4))
+		Expect(ansi.EscapeLength([]byte("\x1b[2"))).To(Equal(0))
 	})
 })

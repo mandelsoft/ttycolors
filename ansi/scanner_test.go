@@ -22,15 +22,39 @@ var _ = Describe("ScanSequence", func() {
 			Entry("empty", ""),
 			Entry("text", "text"),
 			Entry("escape only", "\x1b"),
-			Entry("no CSI", "\x1bXm"),
+			Entry("escape followed by control character", "\x1b\x01"),
+			Entry("escape followed by escape", "\x1b\x1b"),
+			Entry("unterminated control string", "\x1bXm"),
+			Entry("unterminated OSC", "\x1b]0;title"),
+			Entry("OSC with invalid escape", "\x1b]0;title\x1bx"),
 			Entry("incomplete", "\x1b[1;3"),
 			Entry("invalid byte", "\x1b[1\x01m"),
+			Entry("incomplete escape sequence", "\x1b("),
 			Entry("not leading", "a\x1b[1m"),
+			Entry("8-bit CSI", "\u009b1m"),
+		)
+	})
+
+	Context("control sequences", func() {
+		DescribeTable("returns S_CONTROL",
+			func(s string) {
+				l, c := scan(s + "rest")
+				Expect(l).To(Equal(len(s)))
+				Expect(c).To(Equal(ansi.S_CONTROL))
+			},
 			Entry("erase line", "\x1b[2K"),
 			Entry("cursor up", "\x1b[A"),
 			Entry("cursor position", "\x1b[10;20H"),
 			Entry("private mode", "\x1b[?25l"),
 			Entry("intermediate byte", "\x1b[1 m"),
+			Entry("private SGR like sequence", "\x1b[>4;2m"),
+			Entry("OSC with BEL", "\x1b]0;title\a"),
+			Entry("OSC with ST", "\x1b]8;;https://example.com\x1b\\"),
+			Entry("DCS", "\x1bP1$r0m\x1b\\"),
+			Entry("APC", "\x1b_data\x1b\\"),
+			Entry("two character sequence", "\x1b7"),
+			Entry("reset", "\x1bc"),
+			Entry("character set", "\x1b(B"),
 		)
 	})
 
@@ -160,6 +184,14 @@ var _ = Describe("ScanSequence", func() {
 			Expect((ansi.S_FG_COLOR | ansi.S_HIGHLIGHT).String()).To(Equal("S_HIGHLIGHT|S_FG_COLOR"))
 			Expect(ansi.S_COLOR.String()).To(Equal("S_FG_COLOR|S_BG_COLOR|S_UL_COLOR"))
 			Expect((ansi.S_STRIKE | ansi.Covered(1<<20)).String()).To(Equal("S_STRIKE|0x100000"))
+			Expect(ansi.S_CONTROL.String()).To(Equal("S_CONTROL"))
+			Expect((ansi.S_ALL | ansi.S_CONTROL).String()).To(Equal("S_ALL|S_CONTROL"))
+			Expect((ansi.S_ITALIC | ansi.S_CONTROL).String()).To(Equal("S_ITALIC|S_CONTROL"))
+		})
+
+		It("keeps S_CONTROL separate from the areas", func() {
+			Expect(ansi.S_ALL & ansi.S_CONTROL).To(Equal(ansi.S_NONE))
+			Expect(ansi.S_CONTROL > ansi.S_ALL).To(BeTrue())
 		})
 	})
 
@@ -189,10 +221,12 @@ var _ = Describe("Scan", func() {
 		Entry("sequence at the end", "text\x1b[4m", ansi.S_UNDERLINE),
 		Entry("reset", "a\x1b[1mb\x1b[0m", ansi.S_ALL),
 		Entry("multi byte runes", "ä\x1b[9möü\x1b[29mß", ansi.S_STRIKE),
-		Entry("other control sequences", "\x1b[2Ka\x1b[10;20H", ansi.S_NONE),
-		Entry("other control sequence before format", "\x1b[2K\x1b[7m", ansi.S_REVERSE),
-		Entry("lone escape", "a\x1bb\x1b[5m", ansi.S_BLINK),
+		Entry("other control sequences", "\x1b[2Ka\x1b[10;20H", ansi.S_CONTROL),
+		Entry("other control sequence before format", "\x1b[2K\x1b[7m", ansi.S_REVERSE|ansi.S_CONTROL),
+		Entry("two character sequence", "a\x1bb\x1b[5m", ansi.S_BLINK|ansi.S_CONTROL),
+		Entry("lone escape", "a\x1b\x01b\x1b[5m", ansi.S_BLINK),
 		Entry("escape before sequence", "\x1b\x1b[8m", ansi.S_INVIS),
+		Entry("reset all and control", "\x1b[0m\x1b]0;title\a", ansi.S_ALL|ansi.S_CONTROL),
 		Entry("incomplete sequence at the end", "\x1b[1mtext\x1b[31", ansi.S_HIGHLIGHT),
 	)
 
@@ -239,9 +273,15 @@ var _ = Describe("Effect", func() {
 	)
 
 	It("ignores invalid sequences", func() {
-		l, e := ansi.ScanSequenceEffect([]byte("\x1b[2K"))
+		l, e := ansi.ScanSequenceEffect([]byte("\x1b[1\x01m"))
 		Expect(l).To(Equal(0))
 		Expect(e).To(Equal(ansi.Effect{}))
+	})
+
+	It("marks control sequences", func() {
+		l, e := ansi.ScanSequenceEffect([]byte("\x1b[2K"))
+		Expect(l).To(Equal(4))
+		Expect(e).To(Equal(ansi.Effect{Set: ansi.S_CONTROL}))
 	})
 
 	DescribeTable("string effects",
@@ -252,6 +292,7 @@ var _ = Describe("Effect", func() {
 		Entry("set and reset", "\x1b[1mbold\x1b[22m", ansi.S_NONE, ansi.S_HIGHLIGHT),
 		Entry("left set", "\x1b[31mred\x1b[1m", ansi.S_FG_COLOR|ansi.S_HIGHLIGHT, ansi.S_NONE),
 		Entry("reset all in between", "\x1b[31ma\x1b[0mb\x1b[3mc", ansi.S_ITALIC, ansi.S_ALL&^ansi.S_ITALIC),
-		Entry("other control sequences", "\x1b[2Ka\x1b[1m", ansi.S_HIGHLIGHT, ansi.S_NONE),
+		Entry("other control sequences", "\x1b[2Ka\x1b[1m", ansi.S_HIGHLIGHT|ansi.S_CONTROL, ansi.S_NONE),
+		Entry("control sequences are kept after reset all", "\x1b[2K\x1b[0m", ansi.S_CONTROL, ansi.S_ALL),
 	)
 })

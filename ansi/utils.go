@@ -5,9 +5,9 @@ import (
 	"unicode/utf8"
 )
 
-// EscapeLength returns the byte length for an ANSI output format escape sequence
-// if the data starts with such a prefix.
-// Other control sequences are not recognized (see package documentation).
+// EscapeLength returns the byte length of an escape sequence (output format
+// sequence or other control sequence, see ScanSequence), if the data starts
+// with such a prefix.
 func EscapeLength(data []byte) int {
 	l, _ := ScanSequence(data)
 	return l
@@ -91,9 +91,8 @@ func CharIndexBefore(s string, idx int) int {
 }
 
 // CharLen determines the number of runes
-// in a string containing ANSI code sequences.
-// Only output format sequences are ignored, other control
-// sequences are counted as text (see package documentation).
+// in a string containing escape sequences.
+// All escape sequences are ignored.
 func CharLen(s string) int {
 	data := []byte(s)
 	cnt := 0
@@ -129,18 +128,34 @@ func ByteIndex(data []byte, c rune) int {
 	return -1
 }
 
-// Strip removes all ANSI output format sequences from a string.
-// Other control sequences are kept (see package documentation).
+// Strip removes all output format sequences from a string.
+// Other control sequences, like cursor movements, are kept
+// (see StripAll).
 func Strip(s string) string {
+	return strip(s, func(c Covered) bool { return c&S_CONTROL == 0 })
+}
+
+// StripAll removes all escape sequences from a string,
+// output format sequences as well as other control sequences.
+func StripAll(s string) string {
+	return strip(s, func(Covered) bool { return true })
+}
+
+// strip removes all escape sequences selected by the
+// given function from a string.
+func strip(s string, remove func(Covered) bool) string {
 	data := []byte(s)
 	i := 0
 	for len(data[i:]) > 0 {
-		l := EscapeLength(data[i:])
-		if l == 0 {
+		l, c := ScanSequence(data[i:])
+		switch {
+		case l == 0:
 			_, l = utf8.DecodeRune(data[i:])
 			i += l
-		} else {
+		case remove(c):
 			data = append(data[:i], data[i+l:]...)
+		default:
+			i += l
 		}
 	}
 	return string(data)

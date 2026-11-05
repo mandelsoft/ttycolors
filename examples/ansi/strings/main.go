@@ -28,9 +28,10 @@ func main() {
 	p.Call(`ansi.SubString(s, 2, 2)`, ansi.SubString(s, 2, 2))
 	p.Call(`ansi.SplitAt(s, 5)`, show.R2(ansi.SplitAt(s, 5))...)
 
-	p.Title("limitations: other control sequences are text")
+	p.Title("control sequences")
 	p.Call(`ansi.CharLen("\x1b[2Kab")`, ansi.CharLen("\x1b[2Kab"))
 	p.Call(`ansi.Strip("\x1b[2K\x1b[1mab")`, ansi.Strip("\x1b[2K\x1b[1mab"))
+	p.Call(`ansi.StripAll("\x1b[2K\x1b[1mab")`, ansi.StripAll("\x1b[2K\x1b[1mab"))
 	p.Flush()
 
 	fmt.Printf("\nrendered: %s (%d runes)\n", s, ansi.CharLen(s))
