@@ -27,6 +27,12 @@ func Reverse(s ...any) String {
 func StrikeThrough(s ...any) String {
 	return defaultContext.StrikeThrough(s...)
 }
+
+// Overline provides an overlined string. It is supported by most
+// modern terminals, but not, for example, by xterm and the Linux console.
+func Overline(s ...any) String {
+	return defaultContext.Overline(s...)
+}
 func Invisible(s ...any) String {
 	return defaultContext.Invisible(s...)
 }
@@ -44,6 +50,11 @@ func NonReverse(s ...any) String {
 }
 func NonStrikeThrough(s ...any) String {
 	return defaultContext.NonStrikeThrough(s...)
+}
+
+// NonOverline provides a string without overline.
+func NonOverline(s ...any) String {
+	return defaultContext.NonOverline(s...)
 }
 func NonInvisible(s ...any) String {
 	return defaultContext.NonInvisible(s...)

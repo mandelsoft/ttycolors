@@ -64,6 +64,8 @@ var (
 		func(s *state) *groupState { return &s.invisible }}
 	StrikeThrough = &Group{ansi.MODE_RESET_STRIKE, ansi.S_STRIKE,
 		func(s *state) *groupState { return &s.strike }}
+	Overline = &Group{ansi.MODE_RESET_OVERLINE, ansi.S_OVERLINE,
+		func(s *state) *groupState { return &s.overline }}
 	// UnderlineColor requires the feature FeatureUnderlineColor.
 	UnderlineColor = &Group{ansi.COLOR_UL_DEFAULT, ansi.S_UL_COLOR,
 		func(s *state) *groupState { return &s.ulColor }}
@@ -71,7 +73,7 @@ var (
 
 // groups is the list of all groups. It defines the order
 // the groups are rendered.
-var groups = []*Group{FG, BG, Highlight, Italic, Underline, Blinking, Reverse, Invisible, StrikeThrough, UnderlineColor}
+var groups = []*Group{FG, BG, Highlight, Italic, Underline, Blinking, Reverse, Invisible, StrikeThrough, Overline, UnderlineColor}
 
 // Groups provides the list of all groups in render order.
 func Groups() []*Group {
@@ -142,7 +144,7 @@ func (e *groupState) emitEnd(g *Group) ansi.CodeSequence {
 // The zero value describes the terminal default for all groups.
 type state struct {
 	fg, bg, highlight, italic, underline,
-	blinking, reverse, invisible, strike, ulColor groupState
+	blinking, reverse, invisible, strike, overline, ulColor groupState
 }
 
 // Get returns the desired code for a group.

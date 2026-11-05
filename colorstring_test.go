@@ -229,6 +229,7 @@ var _ = Describe("ColorString Test Environment", func() {
 			Entry("reverse", Reverse, NonReverse, ansi.MODE_REVERSE, ansi.MODE_RESET_REVERSE),
 			Entry("invisible", Invisible, NonInvisible, ansi.MODE_INVIS, ansi.MODE_RESET_INVIS),
 			Entry("strike through", StrikeThrough, NonStrikeThrough, ansi.MODE_STRIKE, ansi.MODE_RESET_STRIKE),
+			Entry("overline", Overline, NonOverline, ansi.MODE_OVERLINE, ansi.MODE_RESET_OVERLINE),
 		)
 
 		It("nested modes", func() {

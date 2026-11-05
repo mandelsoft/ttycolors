@@ -22,6 +22,7 @@ const (
 	S_FG_COLOR
 	S_BG_COLOR
 	S_UL_COLOR
+	S_OVERLINE
 )
 
 const (
@@ -30,7 +31,7 @@ const (
 	// S_COLOR covers all color areas (foreground, background and underline color).
 	S_COLOR = S_FG_COLOR | S_BG_COLOR | S_UL_COLOR
 	// S_ALL covers all output format areas (used for a reset of all modes).
-	S_ALL = S_HIGHLIGHT | S_ITALIC | S_UNDERLINE | S_BLINK | S_REVERSE | S_INVIS | S_STRIKE | S_COLOR
+	S_ALL = S_HIGHLIGHT | S_ITALIC | S_UNDERLINE | S_BLINK | S_REVERSE | S_INVIS | S_STRIKE | S_OVERLINE | S_COLOR
 )
 
 var coveredNames = []struct {
@@ -47,6 +48,7 @@ var coveredNames = []struct {
 	{S_FG_COLOR, "S_FG_COLOR"},
 	{S_BG_COLOR, "S_BG_COLOR"},
 	{S_UL_COLOR, "S_UL_COLOR"},
+	{S_OVERLINE, "S_OVERLINE"},
 }
 
 // String provides the names of the covered areas separated by |,
@@ -232,7 +234,7 @@ func isResetCode(code int) bool {
 	switch code {
 	case int(MODE_RESET_ALL), int(MODE_RESET_BOLD), int(MODE_RESET_ITALIC),
 		int(MODE_RESET_UNDERLINE), int(MODE_RESET_BLINK), int(MODE_RESET_REVERSE),
-		int(MODE_RESET_INVIS), int(MODE_RESET_STRIKE),
+		int(MODE_RESET_INVIS), int(MODE_RESET_STRIKE), int(MODE_RESET_OVERLINE),
 		int(COLOR_FG_DEFAULT), int(COLOR_BG_DEFAULT), int(COLOR_UL_DEFAULT):
 		return true
 	}
@@ -280,6 +282,8 @@ func sgrArea(code int) Covered {
 		return S_INVIS
 	case code == int(MODE_STRIKE) || code == int(MODE_RESET_STRIKE):
 		return S_STRIKE
+	case code == int(MODE_OVERLINE) || code == int(MODE_RESET_OVERLINE):
+		return S_OVERLINE
 	case code >= int(COLOR_FG_BLACK) && code <= int(COLOR_FG_DEFAULT),
 		code >= int(COLOR_FG_BRIGHT_BLACK) && code <= int(COLOR_FG_BRIGHT_WHITE):
 		return S_FG_COLOR

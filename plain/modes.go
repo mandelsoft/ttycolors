@@ -44,6 +44,11 @@ func StrikeThrough(s ...any) string {
 	return ttycolors.StrikeThrough(s...).String()
 }
 
+// Overline provides a formatted string (see ttycolors.Overline).
+func Overline(s ...any) string {
+	return ttycolors.Overline(s...).String()
+}
+
 // Invisible provides a formatted string (see ttycolors.Invisible).
 func Invisible(s ...any) string {
 	return ttycolors.Invisible(s...).String()
@@ -72,6 +77,11 @@ func NonReverse(s ...any) string {
 // NonStrikeThrough provides a formatted string (see ttycolors.NonStrikeThrough).
 func NonStrikeThrough(s ...any) string {
 	return ttycolors.NonStrikeThrough(s...).String()
+}
+
+// NonOverline provides a formatted string (see ttycolors.NonOverline).
+func NonOverline(s ...any) string {
+	return ttycolors.NonOverline(s...).String()
 }
 
 // NonInvisible provides a formatted string (see ttycolors.NonInvisible).

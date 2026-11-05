@@ -174,6 +174,7 @@ var _ = Describe("Format Test Environment", func() {
 			Entry("reverse", FmtReverse, FmtNonReverse, ansi.MODE_REVERSE, ansi.MODE_RESET_REVERSE),
 			Entry("invisible", FmtInvisible, FmtNonInvisible, ansi.MODE_INVIS, ansi.MODE_RESET_INVIS),
 			Entry("strike through", FmtStrikeThrough, FmtNonStrikeThrough, ansi.MODE_STRIKE, ansi.MODE_RESET_STRIKE),
+			Entry("overline", FmtOverline, FmtNonOverline, ansi.MODE_OVERLINE, ansi.MODE_RESET_OVERLINE),
 		)
 
 		It("non highlighted in bold", func() {

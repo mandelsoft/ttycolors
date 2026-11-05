@@ -309,6 +309,9 @@ func (c *_context) Reverse(s ...any) String {
 func (c *_context) StrikeThrough(s ...any) String {
 	return FmtStrikeThrough.render(c.current(), s)
 }
+func (c *_context) Overline(s ...any) String {
+	return FmtOverline.render(c.current(), s)
+}
 func (c *_context) Invisible(s ...any) String {
 	return FmtInvisible.render(c.current(), s)
 }
@@ -326,6 +329,9 @@ func (c *_context) NonReverse(s ...any) String {
 }
 func (c *_context) NonStrikeThrough(s ...any) String {
 	return FmtNonStrikeThrough.render(c.current(), s)
+}
+func (c *_context) NonOverline(s ...any) String {
+	return FmtNonOverline.render(c.current(), s)
 }
 func (c *_context) NonInvisible(s ...any) String {
 	return FmtNonInvisible.render(c.current(), s)

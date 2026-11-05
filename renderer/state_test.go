@@ -25,7 +25,7 @@ func set(codes ...any) state {
 var _ = Describe("State", func() {
 	Context("groups", func() {
 		It("are ordered", func() {
-			Expect(groups).To(Equal([]*Group{FG, BG, Highlight, Italic, Underline, Blinking, Reverse, Invisible, StrikeThrough, UnderlineColor}))
+			Expect(groups).To(Equal([]*Group{FG, BG, Highlight, Italic, Underline, Blinking, Reverse, Invisible, StrikeThrough, Overline, UnderlineColor}))
 		})
 
 		It("are provided as copy", func() {

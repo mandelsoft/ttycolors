@@ -53,6 +53,11 @@ const (
 	MODE_INVIS Param = 8
 	// MODE_STRIKE sets strike through (crossed-out characters) [ECMA-48].
 	MODE_STRIKE Param = 9
+	// MODE_OVERLINE sets overline [ECMA-48]. It is supported by most
+	// modern terminals, but not, for example, by xterm and the Linux console.
+	MODE_OVERLINE Param = 53
+	// MODE_RESET_OVERLINE resets overline (not overlined) [ECMA-48].
+	MODE_RESET_OVERLINE Param = 55
 
 	// MODE_RAPID_BLINK sets rapid blinking, 150 per minute or more [ECMA-48].
 	// It is rarely supported, most terminals ignore it or render it

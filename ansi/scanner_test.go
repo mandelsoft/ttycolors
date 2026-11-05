@@ -58,6 +58,8 @@ var _ = Describe("ScanSequence", func() {
 			Entry("invisible", "\x1b[8m", ansi.S_INVIS),
 			Entry("strike", "\x1b[9m", ansi.S_STRIKE),
 			Entry("reset strike", "\x1b[29m", ansi.S_STRIKE),
+			Entry("overline", "\x1b[53m", ansi.S_OVERLINE),
+			Entry("reset overline", "\x1b[55m", ansi.S_OVERLINE),
 			Entry("fg color", "\x1b[31m", ansi.S_FG_COLOR),
 			Entry("fg default", "\x1b[39m", ansi.S_FG_COLOR),
 			Entry("bg color", "\x1b[44m", ansi.S_BG_COLOR),
@@ -232,6 +234,8 @@ var _ = Describe("Effect", func() {
 		Entry("extended color", "\x1b[38;5;0;48;2;0;0;0m", ansi.S_FG_COLOR|ansi.S_BG_COLOR, ansi.S_NONE),
 		Entry("underline style and color", "\x1b[4:3;58:5:1m", ansi.S_UNDERLINE|ansi.S_UL_COLOR, ansi.S_NONE),
 		Entry("underline color reset", "\x1b[59m", ansi.S_NONE, ansi.S_UL_COLOR),
+		Entry("overline", "\x1b[53m", ansi.S_OVERLINE, ansi.S_NONE),
+		Entry("overline reset", "\x1b[55m", ansi.S_NONE, ansi.S_OVERLINE),
 	)
 
 	It("ignores invalid sequences", func() {

@@ -21,6 +21,7 @@ It supports the following ANSI output formats:
   - Reverse
   - Invisible
   - StrikeThrough
+  - Overline (not supported, for example, by xterm and the Linux console)
 - ANSI standard colors like Blue and Green, etc.
 - ANSI color ids
 - ANSI RGB color settings
@@ -62,9 +63,9 @@ The package `github.com/mandelsoft/ttycolors`
 provides constants for all native ANSI output formats:
 - output modes, for example `FmtBold`.
   - `FmtBold`, `FmtDim` and `FmtNonHighlighted` are alternative values of the highlight mode.
-  - `FmtItalic`, `FmtUnderline`, `FmtBlinking`, `FmtReverse`, `FmtInvisible`, `FmtStrikeThrough`
+  - `FmtItalic`, `FmtUnderline`, `FmtBlinking`, `FmtReverse`, `FmtInvisible`, `FmtStrikeThrough`, `FmtOverline`
     and their counterparts `FmtNonItalic`, `FmtNonUnderline`, `FmtNonBlinking`, `FmtNonReverse`,
-    `FmtNonInvisible`, `FmtNonStrikeThrough`.
+    `FmtNonInvisible`, `FmtNonStrikeThrough`, `FmtNonOverline`.
   - underline styles `FmtDoubleUnderline`, `FmtCurlyUnderline`, `FmtDottedUnderline`, `FmtDashedUnderline`
     (requiring the feature `FeatureUnderlineStyles`).
 - standard colors for foreground, background and bright colors, for example `FmtBlue`, `FmtBgBlue`, `FmtBrightBlue` or `FmtBgBrightBlue`.

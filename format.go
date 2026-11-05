@@ -190,6 +190,7 @@ var (
 	FmtReverse       = newFmtGroup(renderer.Reverse, ansi.MODE_REVERSE)
 	FmtInvisible     = newFmtGroup(renderer.Invisible, ansi.MODE_INVIS)
 	FmtStrikeThrough = newFmtGroup(renderer.StrikeThrough, ansi.MODE_STRIKE)
+	FmtOverline      = newFmtGroup(renderer.Overline, ansi.MODE_OVERLINE)
 
 	FmtNonItalic        = newFmtGroup(renderer.Italic, ansi.MODE_RESET_ITALIC)
 	FmtNonUnderline     = newFmtGroup(renderer.Underline, ansi.MODE_RESET_UNDERLINE)
@@ -197,6 +198,7 @@ var (
 	FmtNonReverse       = newFmtGroup(renderer.Reverse, ansi.MODE_RESET_REVERSE)
 	FmtNonInvisible     = newFmtGroup(renderer.Invisible, ansi.MODE_RESET_INVIS)
 	FmtNonStrikeThrough = newFmtGroup(renderer.StrikeThrough, ansi.MODE_RESET_STRIKE)
+	FmtNonOverline      = newFmtGroup(renderer.Overline, ansi.MODE_RESET_OVERLINE)
 )
 
 // Underline styles require the feature FeatureUnderlineStyles.

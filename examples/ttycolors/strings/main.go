@@ -27,6 +27,10 @@ func main() {
 
 	// strings can be composed incrementally
 	s := ttycolors.Sequence("normal, ", ttycolors.Underline("underlined"))
-	s = s.Append(", ", ttycolors.StrikeThrough("strike through"))
+	s = s.Append(", ", ttycolors.Reverse("reverse"))
 	fmt.Printf("%s\n", s)
+
+	// modes not supported by all terminals
+	fmt.Printf("%s\n", ttycolors.Sequence(ttycolors.StrikeThrough("strike through"), ", ",
+		ttycolors.Overline("overlined"), ", ", ttycolors.Blinking("blinking")))
 }
