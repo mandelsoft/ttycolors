@@ -1,5 +1,17 @@
 package ttycolors
 
+// UncoloredFG provides a string using the default foreground color
+// of the terminal (see FmtUncoloredFG).
+func UncoloredFG(s ...any) String {
+	return defaultContext.UncoloredFG(s...)
+}
+
+// UncoloredBG provides a string using the default background color
+// of the terminal (see FmtUncoloredBG).
+func UncoloredBG(s ...any) String {
+	return defaultContext.UncoloredBG(s...)
+}
+
 func Black(s ...any) String {
 	return defaultContext.Black(s...)
 }

@@ -19,8 +19,9 @@ type Features = renderer.Features
 
 const (
 	// FeatureFormatting enables output formatting at all.
-	// Without it, no escape sequences are generated and output
-	// format sequences embedded in texts are removed.
+	// Without it, no escape sequences are generated. Texts are never
+	// modified, output format sequences embedded in texts are kept
+	// (see StripIfDisabled).
 	FeatureFormatting = renderer.FeatureFormatting
 	// FeatureUnderlineStyles enables underline styles (double, curly, dotted, dashed).
 	// Without it, they are rendered as single underline.

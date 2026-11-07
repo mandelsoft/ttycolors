@@ -1,10 +1,13 @@
 package plain
 
-import (
-	"github.com/mandelsoft/ttycolors"
-)
-
-// Sequence provides a formatted string (see ttycolors.Sequence).
+// Sequence provides a formatted string using the default context
+// (see ttycolors.Sequence).
 func Sequence(seq ...any) string {
-	return ttycolors.Sequence(seq...).String()
+	return defaultContext.Sequence(seq...)
+}
+
+// Sequence provides a formatted string using the context
+// (see ttycolors.TTYContext.Sequence).
+func (c *_context) Sequence(seq ...any) string {
+	return c.ctx.Sequence(seq...).String()
 }

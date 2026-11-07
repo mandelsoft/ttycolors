@@ -33,10 +33,16 @@ func main() {
 	s3 := ctx.Blue("blue ", "\x1b[0mreset", " blue again")
 	p.Call(`ctx.Blue("blue ", "\x1b[0mreset", " blue again")`, s3.String())
 
-	p.Title("embedded sequences are removed without colors")
-	s4 := ttycolors.NewContext(false).Blue("blue ", red, " blue again")
-	p.Call(`ttycolors.NewContext(false).Blue("blue ", red, " blue again")`, s4.String())
+	p.Title("embedded sequences are kept without colors")
+	off := ttycolors.NewContext(false)
+	s4 := off.Blue("blue ", red, " blue again")
+	p.Code(`off := ttycolors.NewContext(false)`)
+	p.Call(`off.Blue("blue ", red, " blue again")`, s4.String())
+
+	p.Title("embedded sequences are removed on request without colors")
+	s5 := off.Blue("blue ", off.StripIfDisabled(red), " blue again")
+	p.Call(`off.Blue("blue ", off.StripIfDisabled(red), " blue again")`, s5.String())
 	p.Flush()
 
-	fmt.Printf("\nrendered:\n%s\n%s\n%s\n%s\n", s1, s2, s3, s4)
+	fmt.Printf("\nrendered:\n%s\n%s\n%s\n%s\n%s\n", s1, s2, s3, s4, s5)
 }

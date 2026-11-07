@@ -6,6 +6,7 @@ import (
 
 	"github.com/mandelsoft/goutils/optionutils"
 
+	"github.com/mandelsoft/ttycolors/ansi"
 	"github.com/mandelsoft/ttycolors/renderer"
 )
 
@@ -110,6 +111,14 @@ type TTYContext = *_context
 // (see NoColors). The extended features cannot be detected and are
 // disabled by default.
 var defaultContext = &_context{&globalSettings{}}
+
+// DefaultContext provides the default context used by the package
+// functions and formats. Its settings are the global settings
+// (see SetFeatures and NoColors), changing them affects all
+// package functions.
+func DefaultContext() TTYContext {
+	return defaultContext
+}
 
 // SetFeatures sets the global settings (the features of the default
 // context used by the package functions and formats).
@@ -224,6 +233,26 @@ func (c *_context) DisableFeatures(f Features) {
 // New provides a new composed output format.
 func (c *_context) New(f ...FormatProvider) FormatInfo {
 	return newFormat(c.current(), f...)
+}
+
+// StripIfDisabled removes the output format sequences from a text,
+// if output formatting is disabled for the context. Otherwise, the
+// text is returned unchanged. Other escape sequences are always kept.
+// Texts embedded in Strings are never modified, so this function can be
+// used to embed already formatted texts, whose output formats should
+// only appear if the context enables output formatting, for example
+// strings formatted by another context or package plain.
+func (c *_context) StripIfDisabled(s string) string {
+	if c.current().IsEnabled() {
+		return s
+	}
+	return ansi.Strip(s)
+}
+
+// ScanFormat provides the output format established at the end
+// of a text with the settings of the context (see ScanFormat).
+func (c *_context) ScanFormat(s string) FormatInfo {
+	return newScannedFormat(c.current(), s)
 }
 
 // NewFormatter provides a new Formatter, which
@@ -347,6 +376,20 @@ func (c *_context) DottedUnderline(s ...any) String {
 }
 func (c *_context) DashedUnderline(s ...any) String {
 	return FmtDashedUnderline.render(c.current(), s)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// UncoloredFG provides a string using the default foreground color
+// of the terminal (see FmtUncoloredFG).
+func (c *_context) UncoloredFG(s ...any) String {
+	return FmtUncoloredFG.render(c.current(), s)
+}
+
+// UncoloredBG provides a string using the default background color
+// of the terminal (see FmtUncoloredBG).
+func (c *_context) UncoloredBG(s ...any) String {
+	return FmtUncoloredBG.render(c.current(), s)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

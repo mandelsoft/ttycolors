@@ -1,9 +1,24 @@
 package renderer
 
+// String is a formatted string. It keeps the structure of nested
+// formats and texts and is rendered with String.
 type String interface {
 	Enable(...bool)
 	Append(a ...any) String
 	String() string
+
+	// CharLen provides the number of characters (runes) of the
+	// text, escape sequences embedded in texts are not counted.
+	CharLen() int
+	// SplitAt splits the String after n characters. Both parts keep
+	// the structure of nested formats: a format containing the split
+	// position is used for both parts, nested texts without own format
+	// still inherit the format of a surrounding format. Rendered one
+	// after the other, both parts provide the same output as the
+	// original String. Already formatted texts embedded in the String
+	// are split with SplitText into self-contained parts. A negative n
+	// causes a panic, an n beyond the end provides an empty second part.
+	SplitAt(n int) (String, String)
 }
 
 // Renderer renders an element according to the

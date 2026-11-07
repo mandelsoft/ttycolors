@@ -187,13 +187,60 @@ func (s state) Embedded(text string) state {
 // the desired state of all groups on the terminal and updates
 // the terminal state. Only groups whose desired code differs from
 // the terminal state are considered. All changes are combined into
-// one sequence (see ansi.Modes).
+// one sequence (see ansi.Modes). If more than half of the groups have
+// to be reset, the resets are replaced by a single reset of all modes
+// followed by the codes of all groups not in default state, if this
+// is shorter.
 func (s *state) Repeat() string {
-	var codes []ansi.CodeSequence
+	var codes, alt []ansi.CodeSequence
+	resets := 0
 	for _, g := range groups {
-		codes = g.field(s).repeat(g, codes)
+		e := g.field(s)
+		n := len(codes)
+		codes = e.repeat(g, codes)
+		if len(codes) > n && g.isDefault(codes[n]) {
+			resets++
+		}
+		if !g.isDefault(e.code) {
+			alt = append(alt, e.code)
+		}
+	}
+	if resets > len(groups)/2 && len(alt)+1 < len(codes) {
+		codes = append([]ansi.CodeSequence{ansi.MODE_RESET_ALL}, alt...)
 	}
 	return ansi.Modes(codes...)
+}
+
+// scan applies the output format sequences of a text to the state,
+// as if the text had been written: the codes found are the desired
+// and the current codes of their groups. Groups explicitly reset by
+// the text get their reset code, so that they can be distinguished
+// from untouched groups, whose desired code is still nil.
+func (s *state) scan(text string) {
+	for area, code := range ansi.ScanCodes(text) {
+		for _, g := range groups {
+			if area&g.covered == 0 {
+				continue
+			}
+			c := code
+			if area == ansi.S_ALL {
+				c = g.reset
+			}
+			e := g.field(s)
+			e.code, e.current, e.unknown = c, c, false
+		}
+	}
+}
+
+// reopen provides the escape sequences establishing the desired state
+// of all groups from scratch. Groups with a reset code are explicitly
+// reset, groups without desired code are not affected.
+func (s state) reopen() string {
+	for _, g := range groups {
+		e := g.field(&s)
+		e.current, e.unknown = nil, false
+	}
+	return s.Repeat()
 }
 
 // EmitEnds provides the escape sequence resetting all groups,

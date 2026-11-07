@@ -1,6 +1,8 @@
 package ttycolors
 
 import (
+	"bytes"
+
 	"github.com/mandelsoft/ttycolors/ansi"
 	"github.com/mandelsoft/ttycolors/renderer"
 	"github.com/modern-go/reflect2"
@@ -137,6 +139,90 @@ func newFormat(settings renderer.Settings, fmts ...FormatProvider) FormatInfo {
 	return r
 }
 
+// ScanFormat provides the output format established at the end of a
+// text containing output format sequences, using the settings of the
+// default context. Every group touched by the text is part of the format:
+// a group set by the text uses its code, a group explicitly reset by the
+// text uses the reset code, like, for example, FmtNonItalic or
+// FmtUncoloredFG. Untouched groups are not part of the format, so that
+// formatted texts inherit the format of an outer format for them.
+//
+// Codes requiring a feature are handled like the corresponding formats:
+// underline styles require FeatureUnderlineStyles and fall back to
+// a single underline, underline colors require FeatureUnderlineColor.
+// Bold and dim reset the highlight group first, like FmtBold and FmtDim.
+func ScanFormat(s string) FormatInfo {
+	return newScannedFormat(defaultContext.current(), s)
+}
+
+// newScannedFormat provides the output format established at the
+// end of a text with the given settings.
+func newScannedFormat(settings renderer.Settings, s string) FormatInfo {
+	r := &_FormatInfo{Settings: settings, codes: map[*renderer.Group]groupCode{}}
+	for g, c := range renderer.ScanFormat(s) {
+		if m := scannedCodes[g]; m != nil {
+			r.codes[g] = m(c)
+		} else {
+			r.codes[g] = groupCode{code: c}
+		}
+	}
+	return r
+}
+
+// scannedCodes maps codes found in texts to the group codes of their
+// formats for groups with special formats.
+var scannedCodes = map[*renderer.Group]func(ansi.CodeSequence) groupCode{
+	renderer.Highlight:      scannedHighlight,
+	renderer.Underline:      scannedUnderline,
+	renderer.UnderlineColor: scannedUnderlineColor,
+}
+
+// scannedHighlight maps bold and dim to the codes of FmtBold and FmtDim.
+func scannedHighlight(c ansi.CodeSequence) groupCode {
+	switch {
+	case sameCode(c, ansi.MODE_BOLD):
+		return FmtBold.groupCode
+	case sameCode(c, ansi.MODE_DIM):
+		return FmtDim.groupCode
+	default:
+		return groupCode{code: c}
+	}
+}
+
+// scannedUnderline maps underline styles to codes requiring the feature
+// FeatureUnderlineStyles. The style 0 means no underline.
+func scannedUnderline(c ansi.CodeSequence) groupCode {
+	switch {
+	case sameCode(c, ansi.Code{ansi.MODE_UNDERLINE, 0}):
+		return groupCode{code: c, feature: FeatureUnderlineStyles, fallback: ansi.MODE_RESET_UNDERLINE}
+	case hasSubParams(c):
+		return groupCode{code: c, feature: FeatureUnderlineStyles, fallback: ansi.MODE_UNDERLINE}
+	default:
+		return groupCode{code: c}
+	}
+}
+
+// scannedUnderlineColor maps underline colors to codes requiring
+// the feature FeatureUnderlineColor.
+func scannedUnderlineColor(c ansi.CodeSequence) groupCode {
+	return groupCode{code: c, feature: FeatureUnderlineColor}
+}
+
+// sameCode checks whether two codes have the same encoding.
+func sameCode(a, b ansi.CodeSequence) bool {
+	return bytes.Equal(a.Bytes(), b.Bytes())
+}
+
+// hasSubParams checks whether a code sequence contains sub parameters.
+func hasSubParams(c ansi.CodeSequence) bool {
+	for _, code := range c.Codes() {
+		if code.HasSubParams() {
+			return true
+		}
+	}
+	return false
+}
+
 func Composer(fmts ...FormatProvider) renderer.ComposerFunc {
 	return New(fmts...).String
 }
@@ -214,6 +300,15 @@ var (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
+
+// Formats resetting the foreground or background color to the
+// default color of the terminal. They can be used to remove the
+// color of an outer format for nested elements. The color of the
+// outer format is established again afterwards.
+var (
+	FmtUncoloredFG = newFmtGroup(renderer.FG, ansi.COLOR_FG_DEFAULT)
+	FmtUncoloredBG = newFmtGroup(renderer.BG, ansi.COLOR_BG_DEFAULT)
+)
 
 // Standard foreground colors.
 var (

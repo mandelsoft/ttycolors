@@ -177,6 +177,15 @@ var _ = Describe("Format Test Environment", func() {
 			Entry("overline", FmtOverline, FmtNonOverline, ansi.MODE_OVERLINE, ansi.MODE_RESET_OVERLINE),
 		)
 
+		It("uncolored formats", func() {
+			s := New(FmtRed, FmtBgWhite).String("a", FmtUncoloredFG.String("b"), FmtUncoloredBG.String("c"))
+			s.Enable()
+			Expect(s.String()).To(Equal(ansi.Mode(ansi.COLOR_FG_RED, ansi.COLOR_BG_WHITE) + "a" +
+				ansi.Mode(ansi.COLOR_FG_DEFAULT) + "b" +
+				ansi.Mode(ansi.COLOR_FG_RED, ansi.COLOR_BG_DEFAULT) + "c" +
+				ansi.Mode(ansi.COLOR_FG_DEFAULT)))
+		})
+
 		It("non highlighted in bold", func() {
 			s := FmtBold.String("a", FmtNonHighlighted.String("b"), "c")
 			s.Enable()
@@ -299,6 +308,71 @@ var _ = Describe("Format Test Environment", func() {
 			f.Enable(false)
 			Expect(f.Start()).To(BeNil())
 			Expect(f.End()).To(BeNil())
+		})
+	})
+
+	Context("scanned formats", func() {
+		ctx := NewContext(true)
+
+		It("continues the format at the end of a text", func() {
+			pre := ansi.Mode(ansi.MODE_BOLD, ansi.COLOR_FG_RED) + "ab" + ansi.Mode(ansi.MODE_RESET_ITALIC) + "cd"
+			Expect(ctx.ScanFormat(pre).String("x").String()).To(Equal(
+				ansi.Mode(ansi.COLOR_FG_RED, ansi.MODE_RESET_BOLD, ansi.MODE_BOLD, ansi.MODE_RESET_ITALIC) + "x" +
+					ansi.Mode(ansi.COLOR_FG_DEFAULT, ansi.MODE_RESET_BOLD)))
+		})
+
+		It("keeps explicit resets in an outer format", func() {
+			f := ctx.ScanFormat(ansi.Mode(ansi.MODE_RESET_ITALIC) + "a")
+			Expect(ctx.Italic("a", f.String("b"), "c").String()).To(Equal(ansi.Mode(ansi.MODE_ITALIC) + "a" +
+				ansi.Mode(ansi.MODE_RESET_ITALIC) + "b" + ansi.Mode(ansi.MODE_ITALIC) + "c" + ansi.Mode(ansi.MODE_RESET_ITALIC)))
+		})
+
+		It("inherits untouched formats", func() {
+			Expect(ctx.Blue(ctx.ScanFormat("plain").String("x")).String()).To(Equal(
+				ansi.Mode(ansi.COLOR_FG_BLUE) + "x" + ansi.Mode(ansi.COLOR_FG_DEFAULT)))
+		})
+
+		It("handles a reset of all modes", func() {
+			f := ctx.ScanFormat(ansi.Mode(ansi.MODE_BOLD) + "a" + ansi.Mode(ansi.MODE_RESET_ALL, ansi.COLOR_BG_BLUE))
+			Expect(ctx.Italic(f.String("x")).String()).To(Equal(ansi.Mode(ansi.MODE_RESET_ALL, ansi.COLOR_BG_BLUE) + "x" + ansi.Mode(ansi.COLOR_BG_DEFAULT)))
+		})
+
+		It("maps dim like FmtDim", func() {
+			Expect(ctx.ScanFormat(ansi.Mode(ansi.MODE_DIM)).String("x").String()).To(Equal(ctx.New(FmtDim).String("x").String()))
+		})
+
+		It("handles underline styles like the underline style formats", func() {
+			c := NewContext(true)
+			f := c.ScanFormat(ansi.Mode(ansi.UNDERLINE_CURLY))
+			Expect(f.String("x").String()).To(Equal(ansi.Mode(ansi.MODE_UNDERLINE) + "x" + ansi.Mode(ansi.MODE_RESET_UNDERLINE)))
+			c.EnableFeatures(FeatureUnderlineStyles)
+			f = c.ScanFormat(ansi.Mode(ansi.UNDERLINE_CURLY))
+			Expect(f.String("x").String()).To(Equal(ansi.Mode(ansi.UNDERLINE_CURLY) + "x" + ansi.Mode(ansi.MODE_RESET_UNDERLINE)))
+		})
+
+		It("handles underline style 0 as no underline", func() {
+			f := ctx.ScanFormat(ansi.Mode(ansi.Code{ansi.MODE_UNDERLINE, 0}))
+			Expect(ctx.Underline(f.String("x")).String()).To(Equal(ansi.Mode(ansi.MODE_RESET_UNDERLINE) + "x"))
+		})
+
+		It("handles underline colors like the underline color formats", func() {
+			c := NewContext(true)
+			f := c.ScanFormat(ansi.Mode(ansi.Code_UL_ID(5)))
+			Expect(f.String("x").String()).To(Equal("x"))
+			c.EnableFeatures(FeatureUnderlineColor)
+			f = c.ScanFormat(ansi.Mode(ansi.Code_UL_ID(5)))
+			Expect(f.String("x").String()).To(Equal(ansi.Mode(ansi.Code_UL_ID(5)) + "x" + ansi.Mode(ansi.COLOR_UL_DEFAULT)))
+		})
+
+		It("is composable", func() {
+			f := New(ctx.ScanFormat(ansi.Mode(ansi.COLOR_FG_RED)), FmtItalic)
+			f.Enable()
+			Expect(f.String("x").String()).To(Equal(ansi.Mode(ansi.COLOR_FG_RED, ansi.MODE_ITALIC) + "x" + ansi.Mode(ansi.COLOR_FG_DEFAULT, ansi.MODE_RESET_ITALIC)))
+		})
+
+		It("uses the settings of the default context", func() {
+			f := ScanFormat(ansi.Mode(ansi.COLOR_FG_RED))
+			Expect(f.IsEnabled()).To(Equal(!NoColors))
 		})
 	})
 })

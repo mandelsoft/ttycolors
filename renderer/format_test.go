@@ -113,4 +113,46 @@ var _ = Describe("Format", func() {
 				ansi.Mode(ansi.UNDERLINE_DOTTED) + "c" + ansi.Mode(ansi.MODE_RESET_UNDERLINE)))
 		})
 	})
+
+	Context("splitting", func() {
+		It("counts the characters of the content", func() {
+			s := NewFormat(on, FG, ansi.COLOR_FG_RED, []any{"ab", NewFormat(on, Highlight, ansi.MODE_BOLD, []any{"cd"})})
+			Expect(s.CharLen()).To(Equal(4))
+		})
+
+		It("uses the format for both parts", func() {
+			l, r := NewFormat(on, FG, ansi.COLOR_FG_RED, []any{"abcd"}).SplitAt(2)
+			Expect(l.String()).To(Equal(ansi.Mode(ansi.COLOR_FG_RED) + "ab" + ansi.Mode(ansi.COLOR_FG_DEFAULT)))
+			Expect(r.String()).To(Equal(ansi.Mode(ansi.COLOR_FG_RED) + "cd" + ansi.Mode(ansi.COLOR_FG_DEFAULT)))
+		})
+
+		It("splits nested formats", func() {
+			s := NewFormat(on, Italic, ansi.MODE_ITALIC, []any{"aa", NewFormat(on, Highlight, ansi.MODE_BOLD, []any{"bbbb"}), "cc"})
+			l, r := s.SplitAt(4)
+			Expect(l.String()).To(Equal(ansi.Mode(ansi.MODE_ITALIC) + "aa" + ansi.Mode(ansi.MODE_BOLD) + "bb" +
+				ansi.Mode(ansi.MODE_RESET_BOLD, ansi.MODE_RESET_ITALIC)))
+			Expect(r.String()).To(Equal(ansi.Mode(ansi.MODE_BOLD, ansi.MODE_ITALIC) + "bb" +
+				ansi.Mode(ansi.MODE_RESET_BOLD) + "cc" + ansi.Mode(ansi.MODE_RESET_ITALIC)))
+		})
+
+		It("renders the original when the parts are joined", func() {
+			s := NewFormat(on, Italic, ansi.MODE_ITALIC, []any{"aa", NewFormat(on, Highlight, ansi.MODE_BOLD, []any{"bbbb"}), "cc"})
+			for n := 0; n <= s.CharLen()+1; n++ {
+				l, r := s.SplitAt(n)
+				Expect(Sequence(on, []any{l, r}).String()).To(Equal(s.String()), "split at %d", n)
+			}
+		})
+
+		It("keeps feature and fallback", func() {
+			f := NewFeatureFormat(on, Underline, FeatureUnderlineStyles, ansi.UNDERLINE_CURLY, ansi.MODE_UNDERLINE, []any{"ab"})
+			l, r := f.SplitAt(1)
+			Expect(l.String()).To(Equal(ansi.Mode(ansi.MODE_UNDERLINE) + "a" + ansi.Mode(ansi.MODE_RESET_UNDERLINE)))
+			r.(ContextInfo).EnableFeatures(FeatureUnderlineStyles)
+			Expect(r.String()).To(Equal(ansi.Mode(ansi.UNDERLINE_CURLY) + "b" + ansi.Mode(ansi.MODE_RESET_UNDERLINE)))
+		})
+
+		It("panics for a negative index", func() {
+			Expect(func() { NewFormat(on, FG, ansi.COLOR_FG_RED, []any{"ab"}).SplitAt(-1) }).To(Panic())
+		})
+	})
 })

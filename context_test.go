@@ -134,9 +134,34 @@ var _ = Describe("Test Environment", func() {
 				"\x1b[3ma\x1b[23mx\x1b[3mc\x1b[23m"),
 		)
 
-		It("strips embedded sequences if disabled", func() {
+		It("keeps embedded sequences if disabled", func() {
 			red := ctx.Red("red").String()
-			Expect(ttycolors.NewContext(false).Blue("a", red, "\x1b[1mc").String()).To(Equal("aredc"))
+			Expect(ttycolors.NewContext(false).Blue("a", red, "\x1b[1mc").String()).To(Equal("a" + red + "\x1b[1mc"))
+		})
+
+		It("strips embedded sequences on request if disabled", func() {
+			red := ctx.Red("red").String()
+			off := ttycolors.NewContext(false)
+			Expect(off.Blue("a", off.StripIfDisabled(red), "c").String()).To(Equal("aredc"))
+		})
+	})
+
+	Context("StripIfDisabled", func() {
+		s := "\x1b[2K\x1b[1mbold\x1b[22m"
+
+		It("keeps texts if enabled", func() {
+			Expect(ttycolors.NewContext(true).StripIfDisabled(s)).To(Equal(s))
+		})
+
+		It("removes output format sequences if disabled", func() {
+			Expect(ttycolors.NewContext(false).StripIfDisabled(s)).To(Equal("\x1b[2Kbold"))
+		})
+
+		It("uses the settings at the time of the call", func() {
+			ctx := ttycolors.NewContext(true)
+			Expect(ctx.StripIfDisabled(s)).To(Equal(s))
+			ctx.Enable(false)
+			Expect(ctx.StripIfDisabled(s)).To(Equal("\x1b[2Kbold"))
 		})
 	})
 })
@@ -318,5 +343,21 @@ var _ = Describe("Shared contexts", func() {
 		ttycolors.SetFeatures(ttycolors.NoFeatures)
 		Expect(s.String()).To(Equal(ansi.Mode(ansi.COLOR_FG_RED) + "x" + ansi.Mode(ansi.COLOR_FG_DEFAULT)))
 		Expect(ctx.Red("x").String()).To(Equal("x"))
+	})
+
+	It("scans formats with the settings of the context", func() {
+		ctx := ttycolors.NewContext(true)
+		ctx.EnableFeatures(ttycolors.FeatureUnderlineStyles)
+		f := ctx.ScanFormat(ansi.Mode(ansi.UNDERLINE_CURLY))
+		Expect(f.IsEnabled()).To(BeTrue())
+		Expect(f.Features()).To(Equal(ttycolors.FeatureFormatting | ttycolors.FeatureUnderlineStyles))
+		Expect(f.String("x").String()).To(Equal(ansi.Mode(ansi.UNDERLINE_CURLY) + "x" + ansi.Mode(ansi.MODE_RESET_UNDERLINE)))
+	})
+
+	It("provides the default context", func() {
+		ctx := ttycolors.DefaultContext()
+		Expect(ctx).NotTo(BeNil())
+		Expect(ctx.IsEnabled()).To(Equal(!ttycolors.NoColors))
+		Expect(ctx.Features()).To(Equal(ttycolors.EnabledFeatures()))
 	})
 })

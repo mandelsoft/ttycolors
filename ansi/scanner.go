@@ -3,6 +3,7 @@ package ansi
 import (
 	"bytes"
 	"fmt"
+	"iter"
 	"math/bits"
 	"strconv"
 	"strings"
@@ -293,6 +294,67 @@ func ScanEffect(s string) Effect {
 	}
 }
 
+// ScanCodes provides the codes of all output format sequences of s
+// in order, together with the output format area affected by them.
+// A reset of all modes (ESC[0m or ESC[m) affects S_ALL, all other codes
+// a single area. The arguments of extended colors given as separate
+// parameters are part of the code of the color, for example 38;5;208.
+// Codes not affecting an output format area (for example fonts) and
+// other escape sequences are omitted.
+func ScanCodes(s string) iter.Seq2[Covered, CodeSequence] {
+	return func(yield func(Covered, CodeSequence) bool) {
+		data := []byte(s)
+		for {
+			i := bytes.IndexByte(data, '\x1b')
+			if i < 0 {
+				return
+			}
+			l, e := ScanSequenceEffect(data[i:])
+			if l == 0 {
+				l = 1
+			}
+			if e.Covered() != S_NONE && e.Set&S_CONTROL == 0 {
+				cont := true
+				sgrCodes(data[i+2:i+l-1], func(code int, text []byte) {
+					if area := sgrArea(code); cont && area != S_NONE {
+						cont = yield(area, parseCodeSequence(text))
+					}
+				})
+				if !cont {
+					return
+				}
+			}
+			data = data[i+l:]
+		}
+	}
+}
+
+// parseCodeSequence parses the parameter text of an SGR code. A single
+// parameter is provided as Param, a single code with sub parameters
+// as Code, empty parameters as Omitted.
+func parseCodeSequence(text []byte) CodeSequence {
+	var seq codeSequence
+	for _, p := range bytes.Split(text, []byte{PARAM_SEPARATOR}) {
+		var code Code
+		for _, sub := range bytes.Split(p, []byte{SUBPARAM_SEPARATOR}) {
+			v, err := strconv.Atoi(string(sub))
+			if err != nil || v < 0 {
+				v = int(Omitted)
+			}
+			code = append(code, Param(v))
+		}
+		seq = append(seq, code)
+	}
+	switch {
+	case len(seq) > 1:
+		return seq
+	case len(seq[0]) > 1:
+		return seq[0]
+	default:
+		return seq[0][0]
+	}
+}
+
 func isSGRParameterByte(c byte) bool {
 	return (c >= '0' && c <= '9') || c == PARAM_SEPARATOR || c == SUBPARAM_SEPARATOR
 }
@@ -302,34 +364,46 @@ func isSGRParameterByte(c byte) bool {
 func sgrEffect(params []byte) Effect {
 	var effect Effect
 
+	sgrCodes(params, func(code int, _ []byte) {
+		if isResetCode(code) {
+			effect = effect.Then(Effect{Reset: sgrArea(code)})
+		} else {
+			effect = effect.Then(Effect{Set: sgrArea(code)})
+		}
+	})
+	return effect
+}
+
+// sgrCodes calls f for all codes of the parameters of a Select
+// Graphic Rendition sequence in order, with the code and its
+// parameter text. The arguments of an extended color given as
+// separate parameters are part of the text of the color code.
+func sgrCodes(params []byte, f func(code int, text []byte)) {
 	args := bytes.Split(params, []byte{PARAM_SEPARATOR})
 	for i := 0; i < len(args); i++ {
 		code, sub, ok := sgrCode(args[i])
 		if !ok {
 			continue
 		}
-		if isResetCode(code) {
-			effect = effect.Then(Effect{Reset: sgrArea(code)})
-		} else {
-			effect = effect.Then(Effect{Set: sgrArea(code)})
-		}
+		n := 1
 		if isExtendedColor(code) && !sub && i+1 < len(args) {
-			// skip the arguments of an extended color
-			// given as separate parameters.
 			switch kind, _, _ := sgrCode(args[i+1]); kind {
 			case COLOR_ID:
-				i += 2
+				n = 3
 			case COLOR_RGB:
-				i += 4
+				n = 5
 			default:
 				// the number of arguments of an unknown
 				// color kind is unknown, so the remaining
 				// parameters cannot be interpreted.
-				return effect
+				f(code, args[i])
+				return
 			}
 		}
+		end := min(i+n, len(args))
+		f(code, bytes.Join(args[i:end], []byte{PARAM_SEPARATOR}))
+		i = end - 1
 	}
-	return effect
 }
 
 // isResetCode checks whether a code resets its area

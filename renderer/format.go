@@ -42,6 +42,22 @@ func NewFeatureFormat(settings Settings, g *Group, features Features, c, fallbac
 	return f
 }
 
+// SplitAt splits the content of the format after n characters
+// (see String). Both parts use the format.
+func (f *_Format) SplitAt(n int) (String, String) {
+	checkSplitIndex(n)
+	l, r := f.splitElements(n)
+	return f.with(l), f.with(r)
+}
+
+// with provides a format with the same settings and code
+// for other nested elements.
+func (f *_Format) with(nested []any) String {
+	n := &_Format{start: f.start, group: f.group, feature: f.feature, fallback: f.fallback}
+	n._Sequence = newSequence(n, f.Settings, nested)
+	return n
+}
+
 // code provides the code to use for the given rendering settings.
 func (f *_Format) code(cfg Settings) ansi.CodeSequence {
 	if cfg.features.Has(f.feature) {

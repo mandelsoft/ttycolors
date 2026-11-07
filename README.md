@@ -3,10 +3,11 @@
 This Go package provides support for colorized output
 in terms of [ANSI Escape Codes](http://en.wikipedia.org/wiki/ANSI_escape_code#Colors).
 
-The library consists of five basic APIs:
+The library consists of six basic APIs:
 - [composition of output formats](#output-format-management)
 - [enable colored output on `io.Writer` and `os.Stdout`](#managing-colorized-output).
 - [compose colored strings](#managing-colorized-strings)
+- [split formatted strings and scan their output format](#splitting-formatted-strings)
 - [directly formatted Go strings](#plain-formatted-strings) (package `github.com/mandelsoft/ttycolors/plain`),
   usable as a standalone library
 - [low-level ANSI escape sequence handling](#the-ansi-package) (package `github.com/mandelsoft/ttycolors/ansi`),
@@ -69,6 +70,8 @@ provides constants for all native ANSI output formats:
   - underline styles `FmtDoubleUnderline`, `FmtCurlyUnderline`, `FmtDottedUnderline`, `FmtDashedUnderline`
     (requiring the feature `FeatureUnderlineStyles`).
 - standard colors for foreground, background and bright colors, for example `FmtBlue`, `FmtBgBlue`, `FmtBrightBlue` or `FmtBgBrightBlue`.
+- `FmtUncoloredFG` and `FmtUncoloredBG` reset the foreground or background color to the default
+  color of the terminal, for example to remove the color of an outer format for a nested part.
 - color ids using `FmtIdColor(id)` and `FmtBgIdColor(id)`
 - underline colors using `FmtUnderlineIdColor(id)` and `FmtUnderlineRGBColor(r,g,b)`
   (requiring the feature `FeatureUnderlineColor`).
@@ -168,6 +171,8 @@ ANSI output formats providing an appropriate formatted `String` object.
 
 - output modes, for example `Bold`, `Italic`, `NonItalic` or `CurlyUnderline`.
 - standard colors for foreground, background and bright colors, for example `Blue`, `BgBlue`, `BrightBlue` or `BgBrightBlue`.
+- `UncoloredFG` and `UncoloredBG` for the default foreground or background color of the terminal,
+  for example `Blue("blue ", UncoloredFG("default"), " blue")`.
 - color ids using `IdColor(id)` and `BgIdColor(id)`
 - RGB colors using `RGBColor(r,g,b)` and `BgRGBColor(r,g,b)`
 - underline colors using `UnderlineIdColor(id)` and `UnderlineRGBColor(r,g,b)`
@@ -194,12 +199,58 @@ red := ttycolors.Red("red").String()
 s := ttycolors.Blue("a ", red, " blue")   // " blue" is still blue
 ```
 
-If colors are disabled, the output format sequences embedded in texts are removed.
-Other control sequences are neither tracked nor removed.
+Plain texts inherit the output format of the surrounding formats, the counterparts
+(for example `NonItalic`, `NonHighlighted` or `UncoloredFG`) explicitly switch it off:
+
+```golang
+seq := ttycolors.Sequence(ttycolors.Italic("italic"), " inherits")
+ttycolors.Italic(seq, " italic")  // " inherits" is italic
+seq = ttycolors.Sequence(ttycolors.Italic("italic"), ttycolors.NonItalic(" upright"))
+ttycolors.Italic(seq, " italic")  // " upright" is not italic
+```
+
+This difference is lost for already formatted strings: a rendered string describes
+the output format for the default rendition and cannot express inheriting an outer format.
+Therefore, `String` objects should be nested directly instead of their rendered strings,
+whenever possible.
+
+Texts are never modified: if colors are disabled, no escape sequences are
+generated, but output format sequences embedded in texts are kept. Other control
+sequences are not tracked. `StripIfDisabled(s)` (or the method of a context)
+removes the output format sequences from a text, if colors are disabled for the
+(default) context. It can be used for already formatted texts, whose formats should
+only appear if the context enables colors, for example strings formatted by another
+context or by package `plain`:
+
+```golang
+file := ttycolors.NewContext(false)
+file.Blue("a ", file.StripIfDisabled(plain.Red("red")), " text") // "a red text"
+```
+
+`CharLen` provides the number of characters of a `String`, without rendering it.
+`SplitAt` splits a `String` after a number of characters into two `String`s.
+Both parts keep the structure of nested formats: a format containing the split
+position is used for both parts, and plain texts still inherit the format of a
+surrounding format. Therefore, the parts can be formatted independently:
+
+```golang
+first, second := ttycolors.Blue("progress").SplitAt(3)
+ttycolors.Sequence(ttycolors.Reverse(first), second) // "pro" reversed, all blue
+```
+
+Already formatted texts embedded in a `String` are split like with `SplitAt`
+(see [Splitting Formatted Strings](#splitting-formatted-strings)).
 
 With the method `Sequence(text...)` a sequence of Strings can be created.
-All composition functions accept an arbitrary list of Golang strings or other
-`String` objects. All other types will be converted to a string using `fmt.Sprintf("%v")`.
+All composition functions accept an arbitrary list of elements, which are
+concatenated without separators:
+
+- Golang strings and byte slices are used as text. Output format sequences
+  embedded in them are tracked (see above).
+- `String` objects are nested structurally and rendered with the settings
+  of the outermost `String`.
+- All other types are converted to a string using `fmt.Sprintf("%v")`,
+  for example, `fmt.Stringer` values provide their `String()` result.
 
 ### Examples
 
@@ -249,6 +300,51 @@ is defined by the context used to create the string
 
 The state of top level `String` object determines the color enablement, regardless what sublevel objects define.
 
+## Splitting Formatted Strings
+
+Within a `String`, every group of output formats (for example the foreground
+color or italic) has one of three states at every position of the text:
+
+- *untouched*: there is no format for the group, the text inherits the format of an outer format,
+- *set*: a format sets a code for the group, for example `Italic(...)`,
+- *explicitly reset*: a format switches the group off, for example `NonItalic(...)`.
+
+Already formatted Go strings keep this information, as far as possible: groups without
+output format sequences are untouched, groups switched off by a reset code are explicitly reset.
+
+`SplitAt(s, n)` splits a formatted Go string after `n` characters into two
+self-contained parts, which keep their output format, if they are embedded
+or formatted independently:
+
+- the first part resets the groups still set at the split position,
+- the second part sets these groups again and resets the explicitly reset groups,
+  untouched groups are not affected,
+- output format sequences directly at the split position are replaced by these codes,
+  other escape sequences there belong to the first part.
+
+`SubString(s, start, end)` extracts the characters from `start` to `end-1` the same way.
+
+```golang
+s := ttycolors.Blue("progress").String()
+first, second := ttycolors.SplitAt(s, 3)
+ttycolors.Sequence(ttycolors.Reverse(first), second) // "pro" reversed, all blue
+```
+
+`ScanFormat(s)` provides the output format established at the end of a
+formatted Go string as composed format: set groups use their code, explicitly reset
+groups their reset code (like `FmtNonItalic` or `FmtUncoloredFG`), untouched groups
+are not part of the format. It can be used to continue a formatted string or be
+combined with other formats. Codes requiring a feature are handled like the
+corresponding formats, for example, scanned underline styles require
+`FeatureUnderlineStyles`.
+
+```golang
+f := ttycolors.ScanFormat(s)
+ttycolors.Sequence(s, f.String(" continued with the format at the end of s"))
+```
+
+Codes not affecting an output format group, for example fonts, are not tracked.
+
 ## The Output Context
 
 The package `github.com/mandelsoft/ttycolors` offers plain functions
@@ -274,6 +370,7 @@ setting it to `true` disables output formatting, and disabling the feature
 sets it to `true`.
 
 Additionally, there is a `TTYContext` object offering the same functions as methods.
+`DefaultContext()` provides the default context itself.
 A new context created with `NewContext()` gets a copy of the global settings.
 Later changes of the global settings do not affect it, and its settings can be changed
 independently with the methods `SetFeatures`, `EnableFeatures`, `DisableFeatures`
@@ -322,7 +419,8 @@ s := ctx.String(ttycolors.Blue("a blue text with some ", ttycolors.Italic("itali
 The output is controlled by features:
 
 - `FeatureFormatting`: output formatting at all. Without this feature, no escape
-  sequences are generated, and output format sequences embedded in texts are removed.
+  sequences are generated. Output format sequences embedded in texts are kept
+  (see `StripIfDisabled`).
   It is enabled by default, if the standard output is a terminal.
 
 Some output formats are not supported by all terminals. They require
@@ -372,7 +470,10 @@ str := ctx.CurlyUnderline("a ", ctx.UnderlineIdColor(1, "spelling"), " error")
 The package `github.com/mandelsoft/ttycolors/plain` offers the same
 functions as the main package, but they directly provide formatted Go strings
 instead of `String` objects. Composed formats are provided by `New(fmt...)`
-as functions of the same kind (type `Func`).
+as functions of the same kind (type `Func`). They accept the same elements
+as the functions of the main package: Go strings (for example the results of other
+`plain` functions), byte slices, `String` objects of the main package and
+other values converted with `fmt.Sprintf("%v")`.
 
 ```golang
 s := plain.Blue("a ", plain.Bold("bold"), " blue")
@@ -383,12 +484,40 @@ s = redItalic("a ", plain.Bold("bold"), " red italic")
 
 The functions use the settings (enabled colors and features) of the
 default context of the main package at the time they are called.
+Therefore, they provide formatted strings only, if the standard output is a
+terminal (or the global settings are changed). `For(ctx)` provides the same
+functions as methods of a `Context` bound to a context of the main package.
+They use the settings of this context at the time they are called, for
+example to provide formatted strings for another output independently of
+the global settings:
+
+```golang
+p := plain.For(ttycolors.NewContext(true))
+s := p.Blue("a ", p.Bold("bold"), " blue")
+red := p.New(ttycolors.FmtRed)
+```
+
 Because every call is rendered immediately, every string resets its
 output format at its end. The surrounding calls track the output format
 sequences embedded in such strings and establish their own output format
 again afterwards. Therefore, nested calls work like in the main package,
 but the resulting strings may contain more escape sequences than strings
 composed with `String` objects.
+
+The functions never modify their arguments, even if colors are disabled.
+`StripIfDisabled(s)` removes the output format sequences from a string, if colors
+are disabled for the default context.
+
+The functions `SplitAt`, `SubString` and `ScanFormat` for formatted Go strings
+(see [Splitting Formatted Strings](#splitting-formatted-strings)) are offered,
+also. `ScanFormat` provides a format function:
+
+```golang
+first, second := plain.SplitAt(s, 3)
+s = plain.Reverse(first) + second
+
+s = s + plain.ScanFormat(s)(" continued with the format at the end of s")
+```
 
 ## The ANSI Package
 
@@ -459,6 +588,13 @@ based on runes, ignoring all escape sequences:
 
 Negative indices cause a panic, indices beyond the end of the string are
 truncated.
+
+`SplitAt` and `SubString` cut the string without considering output formats.
+The main package offers functions with the same names providing self-contained
+parts, which keep their output format (see [Splitting Formatted Strings](#splitting-formatted-strings)).
+
+`ScanCodes(s)` provides the codes of all output format sequences of a string
+together with the affected output format areas.
 
 ```golang
 s := ansi.Mode(ansi.MODE_BOLD, ansi.COLOR_FG_RED) + "Hällo" + ansi.Mode(ansi.MODE_RESET_ALL) + " world"

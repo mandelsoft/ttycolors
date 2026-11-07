@@ -1,195 +1,481 @@
 package plain
 
-import (
-	"github.com/mandelsoft/ttycolors"
-)
+// UncoloredFG provides a formatted string using the default context
+// (see ttycolors.UncoloredFG).
+func UncoloredFG(s ...any) string {
+	return defaultContext.UncoloredFG(s...)
+}
 
-// Black provides a formatted string (see ttycolors.Black).
+// UncoloredFG provides a formatted string using the context
+// (see ttycolors.TTYContext.UncoloredFG).
+func (c *_context) UncoloredFG(s ...any) string {
+	return c.ctx.UncoloredFG(s...).String()
+}
+
+// UncoloredBG provides a formatted string using the default context
+// (see ttycolors.UncoloredBG).
+func UncoloredBG(s ...any) string {
+	return defaultContext.UncoloredBG(s...)
+}
+
+// UncoloredBG provides a formatted string using the context
+// (see ttycolors.TTYContext.UncoloredBG).
+func (c *_context) UncoloredBG(s ...any) string {
+	return c.ctx.UncoloredBG(s...).String()
+}
+
+// Black provides a formatted string using the default context
+// (see ttycolors.Black).
 func Black(s ...any) string {
-	return ttycolors.Black(s...).String()
+	return defaultContext.Black(s...)
 }
 
-// Red provides a formatted string (see ttycolors.Red).
+// Black provides a formatted string using the context
+// (see ttycolors.TTYContext.Black).
+func (c *_context) Black(s ...any) string {
+	return c.ctx.Black(s...).String()
+}
+
+// Red provides a formatted string using the default context
+// (see ttycolors.Red).
 func Red(s ...any) string {
-	return ttycolors.Red(s...).String()
+	return defaultContext.Red(s...)
 }
 
-// Green provides a formatted string (see ttycolors.Green).
+// Red provides a formatted string using the context
+// (see ttycolors.TTYContext.Red).
+func (c *_context) Red(s ...any) string {
+	return c.ctx.Red(s...).String()
+}
+
+// Green provides a formatted string using the default context
+// (see ttycolors.Green).
 func Green(s ...any) string {
-	return ttycolors.Green(s...).String()
+	return defaultContext.Green(s...)
 }
 
-// Yellow provides a formatted string (see ttycolors.Yellow).
+// Green provides a formatted string using the context
+// (see ttycolors.TTYContext.Green).
+func (c *_context) Green(s ...any) string {
+	return c.ctx.Green(s...).String()
+}
+
+// Yellow provides a formatted string using the default context
+// (see ttycolors.Yellow).
 func Yellow(s ...any) string {
-	return ttycolors.Yellow(s...).String()
+	return defaultContext.Yellow(s...)
 }
 
-// Blue provides a formatted string (see ttycolors.Blue).
+// Yellow provides a formatted string using the context
+// (see ttycolors.TTYContext.Yellow).
+func (c *_context) Yellow(s ...any) string {
+	return c.ctx.Yellow(s...).String()
+}
+
+// Blue provides a formatted string using the default context
+// (see ttycolors.Blue).
 func Blue(s ...any) string {
-	return ttycolors.Blue(s...).String()
+	return defaultContext.Blue(s...)
 }
 
-// Magenta provides a formatted string (see ttycolors.Magenta).
+// Blue provides a formatted string using the context
+// (see ttycolors.TTYContext.Blue).
+func (c *_context) Blue(s ...any) string {
+	return c.ctx.Blue(s...).String()
+}
+
+// Magenta provides a formatted string using the default context
+// (see ttycolors.Magenta).
 func Magenta(s ...any) string {
-	return ttycolors.Magenta(s...).String()
+	return defaultContext.Magenta(s...)
 }
 
-// Cyan provides a formatted string (see ttycolors.Cyan).
+// Magenta provides a formatted string using the context
+// (see ttycolors.TTYContext.Magenta).
+func (c *_context) Magenta(s ...any) string {
+	return c.ctx.Magenta(s...).String()
+}
+
+// Cyan provides a formatted string using the default context
+// (see ttycolors.Cyan).
 func Cyan(s ...any) string {
-	return ttycolors.Cyan(s...).String()
+	return defaultContext.Cyan(s...)
 }
 
-// White provides a formatted string (see ttycolors.White).
+// Cyan provides a formatted string using the context
+// (see ttycolors.TTYContext.Cyan).
+func (c *_context) Cyan(s ...any) string {
+	return c.ctx.Cyan(s...).String()
+}
+
+// White provides a formatted string using the default context
+// (see ttycolors.White).
 func White(s ...any) string {
-	return ttycolors.White(s...).String()
+	return defaultContext.White(s...)
 }
 
-// BgBlack provides a formatted string (see ttycolors.BgBlack).
+// White provides a formatted string using the context
+// (see ttycolors.TTYContext.White).
+func (c *_context) White(s ...any) string {
+	return c.ctx.White(s...).String()
+}
+
+// BgBlack provides a formatted string using the default context
+// (see ttycolors.BgBlack).
 func BgBlack(s ...any) string {
-	return ttycolors.BgBlack(s...).String()
+	return defaultContext.BgBlack(s...)
 }
 
-// BgRed provides a formatted string (see ttycolors.BgRed).
+// BgBlack provides a formatted string using the context
+// (see ttycolors.TTYContext.BgBlack).
+func (c *_context) BgBlack(s ...any) string {
+	return c.ctx.BgBlack(s...).String()
+}
+
+// BgRed provides a formatted string using the default context
+// (see ttycolors.BgRed).
 func BgRed(s ...any) string {
-	return ttycolors.BgRed(s...).String()
+	return defaultContext.BgRed(s...)
 }
 
-// BgGreen provides a formatted string (see ttycolors.BgGreen).
+// BgRed provides a formatted string using the context
+// (see ttycolors.TTYContext.BgRed).
+func (c *_context) BgRed(s ...any) string {
+	return c.ctx.BgRed(s...).String()
+}
+
+// BgGreen provides a formatted string using the default context
+// (see ttycolors.BgGreen).
 func BgGreen(s ...any) string {
-	return ttycolors.BgGreen(s...).String()
+	return defaultContext.BgGreen(s...)
 }
 
-// BgYellow provides a formatted string (see ttycolors.BgYellow).
+// BgGreen provides a formatted string using the context
+// (see ttycolors.TTYContext.BgGreen).
+func (c *_context) BgGreen(s ...any) string {
+	return c.ctx.BgGreen(s...).String()
+}
+
+// BgYellow provides a formatted string using the default context
+// (see ttycolors.BgYellow).
 func BgYellow(s ...any) string {
-	return ttycolors.BgYellow(s...).String()
+	return defaultContext.BgYellow(s...)
 }
 
-// BgBlue provides a formatted string (see ttycolors.BgBlue).
+// BgYellow provides a formatted string using the context
+// (see ttycolors.TTYContext.BgYellow).
+func (c *_context) BgYellow(s ...any) string {
+	return c.ctx.BgYellow(s...).String()
+}
+
+// BgBlue provides a formatted string using the default context
+// (see ttycolors.BgBlue).
 func BgBlue(s ...any) string {
-	return ttycolors.BgBlue(s...).String()
+	return defaultContext.BgBlue(s...)
 }
 
-// BgMagenta provides a formatted string (see ttycolors.BgMagenta).
+// BgBlue provides a formatted string using the context
+// (see ttycolors.TTYContext.BgBlue).
+func (c *_context) BgBlue(s ...any) string {
+	return c.ctx.BgBlue(s...).String()
+}
+
+// BgMagenta provides a formatted string using the default context
+// (see ttycolors.BgMagenta).
 func BgMagenta(s ...any) string {
-	return ttycolors.BgMagenta(s...).String()
+	return defaultContext.BgMagenta(s...)
 }
 
-// BgCyan provides a formatted string (see ttycolors.BgCyan).
+// BgMagenta provides a formatted string using the context
+// (see ttycolors.TTYContext.BgMagenta).
+func (c *_context) BgMagenta(s ...any) string {
+	return c.ctx.BgMagenta(s...).String()
+}
+
+// BgCyan provides a formatted string using the default context
+// (see ttycolors.BgCyan).
 func BgCyan(s ...any) string {
-	return ttycolors.BgCyan(s...).String()
+	return defaultContext.BgCyan(s...)
 }
 
-// BgWhite provides a formatted string (see ttycolors.BgWhite).
+// BgCyan provides a formatted string using the context
+// (see ttycolors.TTYContext.BgCyan).
+func (c *_context) BgCyan(s ...any) string {
+	return c.ctx.BgCyan(s...).String()
+}
+
+// BgWhite provides a formatted string using the default context
+// (see ttycolors.BgWhite).
 func BgWhite(s ...any) string {
-	return ttycolors.BgWhite(s...).String()
+	return defaultContext.BgWhite(s...)
 }
 
-// BrightBlack provides a formatted string (see ttycolors.BrightBlack).
+// BgWhite provides a formatted string using the context
+// (see ttycolors.TTYContext.BgWhite).
+func (c *_context) BgWhite(s ...any) string {
+	return c.ctx.BgWhite(s...).String()
+}
+
+// BrightBlack provides a formatted string using the default context
+// (see ttycolors.BrightBlack).
 func BrightBlack(s ...any) string {
-	return ttycolors.BrightBlack(s...).String()
+	return defaultContext.BrightBlack(s...)
 }
 
-// BrightRed provides a formatted string (see ttycolors.BrightRed).
+// BrightBlack provides a formatted string using the context
+// (see ttycolors.TTYContext.BrightBlack).
+func (c *_context) BrightBlack(s ...any) string {
+	return c.ctx.BrightBlack(s...).String()
+}
+
+// BrightRed provides a formatted string using the default context
+// (see ttycolors.BrightRed).
 func BrightRed(s ...any) string {
-	return ttycolors.BrightRed(s...).String()
+	return defaultContext.BrightRed(s...)
 }
 
-// BrightGreen provides a formatted string (see ttycolors.BrightGreen).
+// BrightRed provides a formatted string using the context
+// (see ttycolors.TTYContext.BrightRed).
+func (c *_context) BrightRed(s ...any) string {
+	return c.ctx.BrightRed(s...).String()
+}
+
+// BrightGreen provides a formatted string using the default context
+// (see ttycolors.BrightGreen).
 func BrightGreen(s ...any) string {
-	return ttycolors.BrightGreen(s...).String()
+	return defaultContext.BrightGreen(s...)
 }
 
-// BrightYellow provides a formatted string (see ttycolors.BrightYellow).
+// BrightGreen provides a formatted string using the context
+// (see ttycolors.TTYContext.BrightGreen).
+func (c *_context) BrightGreen(s ...any) string {
+	return c.ctx.BrightGreen(s...).String()
+}
+
+// BrightYellow provides a formatted string using the default context
+// (see ttycolors.BrightYellow).
 func BrightYellow(s ...any) string {
-	return ttycolors.BrightYellow(s...).String()
+	return defaultContext.BrightYellow(s...)
 }
 
-// BrightBlue provides a formatted string (see ttycolors.BrightBlue).
+// BrightYellow provides a formatted string using the context
+// (see ttycolors.TTYContext.BrightYellow).
+func (c *_context) BrightYellow(s ...any) string {
+	return c.ctx.BrightYellow(s...).String()
+}
+
+// BrightBlue provides a formatted string using the default context
+// (see ttycolors.BrightBlue).
 func BrightBlue(s ...any) string {
-	return ttycolors.BrightBlue(s...).String()
+	return defaultContext.BrightBlue(s...)
 }
 
-// BrightMagenta provides a formatted string (see ttycolors.BrightMagenta).
+// BrightBlue provides a formatted string using the context
+// (see ttycolors.TTYContext.BrightBlue).
+func (c *_context) BrightBlue(s ...any) string {
+	return c.ctx.BrightBlue(s...).String()
+}
+
+// BrightMagenta provides a formatted string using the default context
+// (see ttycolors.BrightMagenta).
 func BrightMagenta(s ...any) string {
-	return ttycolors.BrightMagenta(s...).String()
+	return defaultContext.BrightMagenta(s...)
 }
 
-// BrightCyan provides a formatted string (see ttycolors.BrightCyan).
+// BrightMagenta provides a formatted string using the context
+// (see ttycolors.TTYContext.BrightMagenta).
+func (c *_context) BrightMagenta(s ...any) string {
+	return c.ctx.BrightMagenta(s...).String()
+}
+
+// BrightCyan provides a formatted string using the default context
+// (see ttycolors.BrightCyan).
 func BrightCyan(s ...any) string {
-	return ttycolors.BrightCyan(s...).String()
+	return defaultContext.BrightCyan(s...)
 }
 
-// BrightWhite provides a formatted string (see ttycolors.BrightWhite).
+// BrightCyan provides a formatted string using the context
+// (see ttycolors.TTYContext.BrightCyan).
+func (c *_context) BrightCyan(s ...any) string {
+	return c.ctx.BrightCyan(s...).String()
+}
+
+// BrightWhite provides a formatted string using the default context
+// (see ttycolors.BrightWhite).
 func BrightWhite(s ...any) string {
-	return ttycolors.BrightWhite(s...).String()
+	return defaultContext.BrightWhite(s...)
 }
 
-// BgBrightBlack provides a formatted string (see ttycolors.BgBrightBlack).
+// BrightWhite provides a formatted string using the context
+// (see ttycolors.TTYContext.BrightWhite).
+func (c *_context) BrightWhite(s ...any) string {
+	return c.ctx.BrightWhite(s...).String()
+}
+
+// BgBrightBlack provides a formatted string using the default context
+// (see ttycolors.BgBrightBlack).
 func BgBrightBlack(s ...any) string {
-	return ttycolors.BgBrightBlack(s...).String()
+	return defaultContext.BgBrightBlack(s...)
 }
 
-// BgBrightRed provides a formatted string (see ttycolors.BgBrightRed).
+// BgBrightBlack provides a formatted string using the context
+// (see ttycolors.TTYContext.BgBrightBlack).
+func (c *_context) BgBrightBlack(s ...any) string {
+	return c.ctx.BgBrightBlack(s...).String()
+}
+
+// BgBrightRed provides a formatted string using the default context
+// (see ttycolors.BgBrightRed).
 func BgBrightRed(s ...any) string {
-	return ttycolors.BgBrightRed(s...).String()
+	return defaultContext.BgBrightRed(s...)
 }
 
-// BgBrightGreen provides a formatted string (see ttycolors.BgBrightGreen).
+// BgBrightRed provides a formatted string using the context
+// (see ttycolors.TTYContext.BgBrightRed).
+func (c *_context) BgBrightRed(s ...any) string {
+	return c.ctx.BgBrightRed(s...).String()
+}
+
+// BgBrightGreen provides a formatted string using the default context
+// (see ttycolors.BgBrightGreen).
 func BgBrightGreen(s ...any) string {
-	return ttycolors.BgBrightGreen(s...).String()
+	return defaultContext.BgBrightGreen(s...)
 }
 
-// BgBrightYellow provides a formatted string (see ttycolors.BgBrightYellow).
+// BgBrightGreen provides a formatted string using the context
+// (see ttycolors.TTYContext.BgBrightGreen).
+func (c *_context) BgBrightGreen(s ...any) string {
+	return c.ctx.BgBrightGreen(s...).String()
+}
+
+// BgBrightYellow provides a formatted string using the default context
+// (see ttycolors.BgBrightYellow).
 func BgBrightYellow(s ...any) string {
-	return ttycolors.BgBrightYellow(s...).String()
+	return defaultContext.BgBrightYellow(s...)
 }
 
-// BgBrightBlue provides a formatted string (see ttycolors.BgBrightBlue).
+// BgBrightYellow provides a formatted string using the context
+// (see ttycolors.TTYContext.BgBrightYellow).
+func (c *_context) BgBrightYellow(s ...any) string {
+	return c.ctx.BgBrightYellow(s...).String()
+}
+
+// BgBrightBlue provides a formatted string using the default context
+// (see ttycolors.BgBrightBlue).
 func BgBrightBlue(s ...any) string {
-	return ttycolors.BgBrightBlue(s...).String()
+	return defaultContext.BgBrightBlue(s...)
 }
 
-// BgBrightMagenta provides a formatted string (see ttycolors.BgBrightMagenta).
+// BgBrightBlue provides a formatted string using the context
+// (see ttycolors.TTYContext.BgBrightBlue).
+func (c *_context) BgBrightBlue(s ...any) string {
+	return c.ctx.BgBrightBlue(s...).String()
+}
+
+// BgBrightMagenta provides a formatted string using the default context
+// (see ttycolors.BgBrightMagenta).
 func BgBrightMagenta(s ...any) string {
-	return ttycolors.BgBrightMagenta(s...).String()
+	return defaultContext.BgBrightMagenta(s...)
 }
 
-// BgBrightCyan provides a formatted string (see ttycolors.BgBrightCyan).
+// BgBrightMagenta provides a formatted string using the context
+// (see ttycolors.TTYContext.BgBrightMagenta).
+func (c *_context) BgBrightMagenta(s ...any) string {
+	return c.ctx.BgBrightMagenta(s...).String()
+}
+
+// BgBrightCyan provides a formatted string using the default context
+// (see ttycolors.BgBrightCyan).
 func BgBrightCyan(s ...any) string {
-	return ttycolors.BgBrightCyan(s...).String()
+	return defaultContext.BgBrightCyan(s...)
 }
 
-// BgBrightWhite provides a formatted string (see ttycolors.BgBrightWhite).
+// BgBrightCyan provides a formatted string using the context
+// (see ttycolors.TTYContext.BgBrightCyan).
+func (c *_context) BgBrightCyan(s ...any) string {
+	return c.ctx.BgBrightCyan(s...).String()
+}
+
+// BgBrightWhite provides a formatted string using the default context
+// (see ttycolors.BgBrightWhite).
 func BgBrightWhite(s ...any) string {
-	return ttycolors.BgBrightWhite(s...).String()
+	return defaultContext.BgBrightWhite(s...)
 }
 
-// RGBColor provides a formatted string (see ttycolors.RGBColor).
+// BgBrightWhite provides a formatted string using the context
+// (see ttycolors.TTYContext.BgBrightWhite).
+func (c *_context) BgBrightWhite(s ...any) string {
+	return c.ctx.BgBrightWhite(s...).String()
+}
+
+// RGBColor provides a formatted string using the default context
+// (see ttycolors.RGBColor).
 func RGBColor(r, g, b byte, s ...any) string {
-	return ttycolors.RGBColor(r, g, b, s...).String()
+	return defaultContext.RGBColor(r, g, b, s...)
 }
 
-// BgRGBColor provides a formatted string (see ttycolors.BgRGBColor).
+// RGBColor provides a formatted string using the context
+// (see ttycolors.TTYContext.RGBColor).
+func (c *_context) RGBColor(r, g, b byte, s ...any) string {
+	return c.ctx.RGBColor(r, g, b, s...).String()
+}
+
+// BgRGBColor provides a formatted string using the default context
+// (see ttycolors.BgRGBColor).
 func BgRGBColor(r, g, b byte, s ...any) string {
-	return ttycolors.BgRGBColor(r, g, b, s...).String()
+	return defaultContext.BgRGBColor(r, g, b, s...)
 }
 
-// IdColor provides a formatted string (see ttycolors.IdColor).
+// BgRGBColor provides a formatted string using the context
+// (see ttycolors.TTYContext.BgRGBColor).
+func (c *_context) BgRGBColor(r, g, b byte, s ...any) string {
+	return c.ctx.BgRGBColor(r, g, b, s...).String()
+}
+
+// IdColor provides a formatted string using the default context
+// (see ttycolors.IdColor).
 func IdColor(id byte, s ...any) string {
-	return ttycolors.IdColor(id, s...).String()
+	return defaultContext.IdColor(id, s...)
 }
 
-// BgIdColor provides a formatted string (see ttycolors.BgIdColor).
+// IdColor provides a formatted string using the context
+// (see ttycolors.TTYContext.IdColor).
+func (c *_context) IdColor(id byte, s ...any) string {
+	return c.ctx.IdColor(id, s...).String()
+}
+
+// BgIdColor provides a formatted string using the default context
+// (see ttycolors.BgIdColor).
 func BgIdColor(id byte, s ...any) string {
-	return ttycolors.BgIdColor(id, s...).String()
+	return defaultContext.BgIdColor(id, s...)
 }
 
-// UnderlineIdColor provides a formatted string (see ttycolors.UnderlineIdColor).
+// BgIdColor provides a formatted string using the context
+// (see ttycolors.TTYContext.BgIdColor).
+func (c *_context) BgIdColor(id byte, s ...any) string {
+	return c.ctx.BgIdColor(id, s...).String()
+}
+
+// UnderlineIdColor provides a formatted string using the default context
+// (see ttycolors.UnderlineIdColor).
 func UnderlineIdColor(id byte, s ...any) string {
-	return ttycolors.UnderlineIdColor(id, s...).String()
+	return defaultContext.UnderlineIdColor(id, s...)
 }
 
-// UnderlineRGBColor provides a formatted string (see ttycolors.UnderlineRGBColor).
+// UnderlineIdColor provides a formatted string using the context
+// (see ttycolors.TTYContext.UnderlineIdColor).
+func (c *_context) UnderlineIdColor(id byte, s ...any) string {
+	return c.ctx.UnderlineIdColor(id, s...).String()
+}
+
+// UnderlineRGBColor provides a formatted string using the default context
+// (see ttycolors.UnderlineRGBColor).
 func UnderlineRGBColor(r, g, b byte, s ...any) string {
-	return ttycolors.UnderlineRGBColor(r, g, b, s...).String()
+	return defaultContext.UnderlineRGBColor(r, g, b, s...)
+}
+
+// UnderlineRGBColor provides a formatted string using the context
+// (see ttycolors.TTYContext.UnderlineRGBColor).
+func (c *_context) UnderlineRGBColor(r, g, b byte, s ...any) string {
+	return c.ctx.UnderlineRGBColor(r, g, b, s...).String()
 }

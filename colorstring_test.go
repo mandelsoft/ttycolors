@@ -285,6 +285,41 @@ var _ = Describe("ColorString Test Environment", func() {
 			Entry("composed", New(FmtRed, FmtItalic).String(), ""),
 		)
 
+		DescribeTable("sequences with formats nested in the same format",
+			nestedSequenceTable(func(outer, first, second func(...any) String, prerendered bool, expected string) {
+				ctx := NewContext(true)
+				var b any = "bbb"
+				if second != nil {
+					b = second("bbb")
+				}
+				var i any = ctx.Sequence(first("aaaa"), b)
+				if prerendered {
+					i = i.(String).String()
+				}
+				s := outer(i, "ccc")
+				s.Enable()
+				Expect(s.String()).To(Equal(expected))
+			})...,
+		)
+
+		DescribeTable("uncolored",
+			func(s String, expected string) {
+				s.Enable()
+				Expect(s.String()).To(Equal(expected))
+			},
+			Entry("foreground", Blue("a", UncoloredFG("b"), "c"),
+				ansi.Mode(ansi.COLOR_FG_BLUE)+"a"+ansi.Mode(ansi.COLOR_FG_DEFAULT)+"b"+ansi.Mode(ansi.COLOR_FG_BLUE)+"c"+ansi.Mode(ansi.COLOR_FG_DEFAULT)),
+			Entry("bright and id foreground", BrightRed("a", UncoloredFG("b", IdColor(5, "c"))),
+				ansi.Mode(ansi.COLOR_FG_BRIGHT_RED)+"a"+ansi.Mode(ansi.COLOR_FG_DEFAULT)+"b"+ansi.Mode(ansi.Code_FG_ID(5))+"c"+ansi.Mode(ansi.COLOR_FG_DEFAULT)),
+			Entry("background", BgYellow("a", UncoloredBG("b"), "c"),
+				ansi.Mode(ansi.COLOR_BG_YELLOW)+"a"+ansi.Mode(ansi.COLOR_BG_DEFAULT)+"b"+ansi.Mode(ansi.COLOR_BG_YELLOW)+"c"+ansi.Mode(ansi.COLOR_BG_DEFAULT)),
+			Entry("background keeps foreground", Blue(BgYellow("a", UncoloredBG("b"), "c")),
+				ansi.Mode(ansi.COLOR_FG_BLUE, ansi.COLOR_BG_YELLOW)+"a"+ansi.Mode(ansi.COLOR_BG_DEFAULT)+"b"+ansi.Mode(ansi.COLOR_BG_YELLOW)+"c"+ansi.Mode(ansi.COLOR_FG_DEFAULT, ansi.COLOR_BG_DEFAULT)),
+			Entry("rgb background", BgRGBColor(1, 2, 3, "a", UncoloredBG("b")),
+				ansi.Mode(ansi.Code_BG_RGB(1, 2, 3))+"a"+ansi.Mode(ansi.COLOR_BG_DEFAULT)+"b"),
+			Entry("top level", UncoloredFG("x"), ansi.Mode(ansi.COLOR_FG_DEFAULT)+"x"),
+		)
+
 		It("alternating", func() {
 			s := Blue("blue", BgGreen("green back", Red("red", BgBlack("black back"), "red"), "green back"), "blue")
 			s.Enable()
@@ -301,4 +336,106 @@ var _ = Describe("ColorString Test Environment", func() {
 		})
 	})
 
+	Context("splitting", func() {
+		It("keeps inheriting plain texts", func() {
+			ctx := NewContext(true)
+			l, r := ctx.Sequence(ctx.Italic("aa"), "bb").SplitAt(3)
+			Expect(ctx.Italic(l, "|", r).String()).To(Equal(ansi.Mode(ansi.MODE_ITALIC) + "aab|b" + ansi.Mode(ansi.MODE_RESET_ITALIC)))
+		})
+
+		It("keeps switched off formats", func() {
+			ctx := NewContext(true)
+			l, r := ctx.Sequence(ctx.NonItalic("aabb")).SplitAt(2)
+			Expect(ctx.Italic(l, "|", r).String()).To(Equal(ansi.Mode(ansi.MODE_RESET_ITALIC) + "aa" +
+				ansi.Mode(ansi.MODE_ITALIC) + "|" + ansi.Mode(ansi.MODE_RESET_ITALIC) + "bb"))
+		})
+
+		It("splits embedded formatted texts", func() {
+			ctx := NewContext(true)
+			l, r := ctx.Sequence("x"+ansi.Mode(ansi.MODE_BOLD)+"yz", 42).SplitAt(2)
+			Expect(l.String()).To(Equal("x" + ansi.Mode(ansi.MODE_BOLD) + "y" + ansi.Mode(ansi.MODE_RESET_BOLD)))
+			Expect(r.String()).To(Equal(ansi.Mode(ansi.MODE_BOLD) + "z" + ansi.Mode(ansi.MODE_RESET_BOLD) + "42"))
+		})
+
+		It("keeps explicitly switched off formats of embedded formatted texts", func() {
+			ctx := NewContext(true)
+			pre := ctx.Sequence(ctx.Italic("aa"), ctx.NonItalic("bb")).String()
+			l, r := ctx.Sequence(pre).SplitAt(3)
+			Expect(r.String()).To(Equal(ansi.Mode(ansi.MODE_RESET_ITALIC) + "b"))
+			// the second "b" stays upright in an outer italic format
+			Expect(ctx.Italic(l, r, "c").String()).To(Equal(ansi.Mode(ansi.MODE_ITALIC) + ansi.Mode(ansi.MODE_ITALIC) + "aa" +
+				ansi.Mode(ansi.MODE_RESET_ITALIC) + "b" + ansi.Mode(ansi.MODE_ITALIC) + ansi.Mode(ansi.MODE_RESET_ITALIC) + "b" +
+				ansi.Mode(ansi.MODE_ITALIC) + "c" + ansi.Mode(ansi.MODE_RESET_ITALIC)))
+		})
+
+		It("keeps formats of embedded formatted texts for an outer format", func() {
+			ctx := NewContext(true)
+			l, r := ctx.Sequence(ctx.Blue("ab", "cd").String()).SplitAt(1)
+			Expect(ctx.Sequence(ctx.Reverse(l), r).String()).To(Equal(ansi.Mode(ansi.MODE_REVERSE) +
+				ansi.Mode(ansi.COLOR_FG_BLUE) + "a" + ansi.Mode(ansi.COLOR_FG_DEFAULT) + ansi.Mode(ansi.MODE_RESET_REVERSE) +
+				ansi.Mode(ansi.COLOR_FG_BLUE) + "bcd" + ansi.Mode(ansi.COLOR_FG_DEFAULT)))
+		})
+
+		It("keeps formats of the second part for an outer format", func() {
+			ctx := NewContext(true)
+			l, r := ctx.Blue("ab", "cd").SplitAt(1)
+			Expect(ctx.Sequence(ctx.Reverse(l), r).String()).To(Equal(ansi.Mode(ansi.COLOR_FG_BLUE, ansi.MODE_REVERSE) + "a" +
+				ansi.Mode(ansi.MODE_RESET_REVERSE) + "bcd" + ansi.Mode(ansi.COLOR_FG_DEFAULT)))
+		})
+	})
 })
+
+// nestedSequenceTable provides the arguments for DescribeTable (the
+// test function followed by the table entries) for sequences with
+// formats nested in the same format for all pairs of a format and
+// its counterpart: outer(Sequence(first("aaaa"), second("bbb")), "ccc").
+// A nil second element means a plain string.
+//
+// A plain string inherits the format of the outer format, while the
+// counterpart switches it off. This difference is lost for pre-rendered
+// strings: a rendered string cannot express inheriting a format, it
+// always describes the terminal state for the default rendition.
+func nestedSequenceTable(body any) []any {
+	type pair struct {
+		name    string
+		mode    func(...any) String
+		non     func(...any) String
+		on, off ansi.CodeSequence
+	}
+	pairs := []pair{
+		{"bold", Bold, NonHighlighted, ansi.NewCodeSequence(ansi.MODE_RESET_BOLD, ansi.MODE_BOLD), ansi.MODE_RESET_BOLD},
+		{"dim", Dim, NonHighlighted, ansi.NewCodeSequence(ansi.MODE_RESET_BOLD, ansi.MODE_DIM), ansi.MODE_RESET_BOLD},
+		{"italic", Italic, NonItalic, ansi.MODE_ITALIC, ansi.MODE_RESET_ITALIC},
+		{"underline", Underline, NonUnderline, ansi.MODE_UNDERLINE, ansi.MODE_RESET_UNDERLINE},
+		{"blinking", Blinking, NonBlinking, ansi.MODE_BLINK, ansi.MODE_RESET_BLINK},
+		{"reverse", Reverse, NonReverse, ansi.MODE_REVERSE, ansi.MODE_RESET_REVERSE},
+		{"invisible", Invisible, NonInvisible, ansi.MODE_INVIS, ansi.MODE_RESET_INVIS},
+		{"strike through", StrikeThrough, NonStrikeThrough, ansi.MODE_STRIKE, ansi.MODE_RESET_STRIKE},
+		{"overline", Overline, NonOverline, ansi.MODE_OVERLINE, ansi.MODE_RESET_OVERLINE},
+		{"foreground color", Blue, UncoloredFG, ansi.COLOR_FG_BLUE, ansi.COLOR_FG_DEFAULT},
+		{"background color", BgBlue, UncoloredBG, ansi.COLOR_BG_BLUE, ansi.COLOR_BG_DEFAULT},
+	}
+	args := []any{body}
+	for _, p := range pairs {
+		on, off := ansi.Mode(p.on), ansi.Mode(p.off)
+		args = append(args,
+			// the plain string inherits the outer format
+			Entry(p.name+": plain string inherits", p.mode, p.mode, nil, false,
+				on+"aaaabbbccc"+off),
+			// the counterpart switches the outer format off
+			Entry(p.name+": counterpart switches off", p.mode, p.mode, p.non, false,
+				on+"aaaa"+off+"bbb"+on+"ccc"+off),
+			// pre-rendered, both are identical: the plain string does not inherit
+			Entry(p.name+": plain string pre-rendered", p.mode, p.mode, nil, true,
+				on+on+"aaaa"+off+"bbb"+on+"ccc"+off),
+			Entry(p.name+": counterpart pre-rendered", p.mode, p.mode, p.non, true,
+				on+on+"aaaa"+off+"bbb"+on+"ccc"+off),
+			// counterpart as first element
+			Entry(p.name+": counterpart first", p.mode, p.non, nil, false,
+				off+"aaaa"+on+"bbbccc"+off),
+			Entry(p.name+": counterpart first pre-rendered", p.mode, p.non, nil, true,
+				on+off+"aaaabbb"+on+"ccc"+off),
+		)
+	}
+	return args
+}

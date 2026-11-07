@@ -223,4 +223,105 @@ var _ = Describe("State", func() {
 			Expect(Italic.isDefault(ansi.MODE_ITALIC)).To(BeFalse())
 		})
 	})
+
+	Context("Repeat with many resets", func() {
+		// resetMost provides a state with all groups but FG and BG
+		// rendered with a code and desired to be reset.
+		resetMost := func() state {
+			var s state
+			for _, g := range groups {
+				if g != FG && g != BG {
+					s = s.Set(g, ansi.MODE_BOLD)
+				}
+			}
+			s.Repeat()
+			for _, g := range groups {
+				if g != FG && g != BG {
+					s = s.Set(g, nil)
+				}
+			}
+			return s
+		}
+
+		It("replaces the resets by a reset of all modes", func() {
+			s := resetMost().Set(BG, ansi.COLOR_BG_BLUE)
+			Expect(s.Repeat()).To(Equal(ansi.Mode(ansi.MODE_RESET_ALL, ansi.COLOR_BG_BLUE)))
+			Expect(s.Repeat()).To(Equal(""))
+		})
+
+		It("sets unchanged groups again", func() {
+			s := resetMost().Set(FG, ansi.COLOR_FG_RED)
+			s.fg.current = ansi.COLOR_FG_RED
+			Expect(s.Repeat()).To(Equal(ansi.Mode(ansi.MODE_RESET_ALL, ansi.COLOR_FG_RED)))
+		})
+
+		It("keeps the resets for a few groups", func() {
+			s := set(Italic, ansi.MODE_ITALIC, Highlight, ansi.MODE_BOLD)
+			s.Repeat()
+			s = s.Set(Italic, nil).Set(Highlight, nil)
+			Expect(s.Repeat()).To(Equal(ansi.Mode(ansi.MODE_RESET_BOLD, ansi.MODE_RESET_ITALIC)))
+		})
+	})
+
+	Context("scan", func() {
+		It("sets desired and current codes", func() {
+			var s state
+			s.scan(ansi.Mode(ansi.MODE_BOLD, ansi.COLOR_FG_RED) + "x" + ansi.Mode(ansi.MODE_RESET_ITALIC))
+			Expect(s.Get(Highlight)).To(Equal(ansi.MODE_BOLD))
+			Expect(s.Get(FG)).To(Equal(ansi.COLOR_FG_RED))
+			Expect(s.Get(Italic)).To(Equal(ansi.MODE_RESET_ITALIC))
+			Expect(s.Get(BG)).To(BeNil())
+			Expect(s.fg.current).To(Equal(ansi.COLOR_FG_RED))
+		})
+
+		It("resets all groups explicitly", func() {
+			var s state
+			s.scan(ansi.Mode(ansi.MODE_BOLD) + ansi.Mode(ansi.MODE_RESET_ALL, ansi.COLOR_BG_BLUE))
+			for _, g := range groups {
+				if g == BG {
+					Expect(s.Get(g)).To(Equal(ansi.COLOR_BG_BLUE))
+				} else {
+					Expect(s.Get(g)).To(Equal(g.reset))
+				}
+			}
+		})
+
+		It("clears an unknown state", func() {
+			s := set(FG, ansi.COLOR_FG_RED).Embedded(ansi.Mode(ansi.COLOR_FG_BLUE))
+			s.scan(ansi.Mode(ansi.COLOR_FG_BLUE))
+			Expect(s.fg.unknown).To(BeFalse())
+		})
+
+		It("closes set groups with EmitEnds", func() {
+			var s state
+			s.scan(ansi.Mode(ansi.MODE_BOLD, ansi.MODE_RESET_ITALIC, ansi.COLOR_FG_RED))
+			Expect(s.EmitEnds()).To(Equal(ansi.Mode(ansi.COLOR_FG_DEFAULT, ansi.MODE_RESET_BOLD)))
+		})
+	})
+
+	Context("reopen", func() {
+		It("sets codes and explicit resets, but not untouched groups", func() {
+			var s state
+			s.scan(ansi.Mode(ansi.MODE_BOLD, ansi.MODE_RESET_ITALIC))
+			Expect(s.reopen()).To(Equal(ansi.Mode(ansi.MODE_BOLD, ansi.MODE_RESET_ITALIC)))
+		})
+
+		It("does not modify the state", func() {
+			var s state
+			s.scan(ansi.Mode(ansi.MODE_BOLD))
+			s.reopen()
+			Expect(s.highlight.current).To(Equal(ansi.MODE_BOLD))
+		})
+
+		It("uses a reset of all modes", func() {
+			var s state
+			s.scan(ansi.Mode(ansi.MODE_RESET_ALL, ansi.MODE_ITALIC))
+			Expect(s.reopen()).To(Equal(ansi.Mode(ansi.MODE_RESET_ALL, ansi.MODE_ITALIC)))
+		})
+
+		It("is empty for an empty state", func() {
+			var s state
+			Expect(s.reopen()).To(Equal(""))
+		})
+	})
 })

@@ -34,4 +34,11 @@ var _ = Describe("Colors", func() {
 				ansi.Mode(ansi.COLOR_FG_BLUE) + "b" + ansi.Mode(ansi.COLOR_FG_DEFAULT) +
 				ansi.Mode(ansi.COLOR_FG_RED) + "c" + ansi.Mode(ansi.COLOR_FG_DEFAULT)))
 	})
+
+	It("provides formatted strings for a context", func() {
+		p := plain.For(ttycolors.NewContext(true))
+		Expect(p.Red("r")).To(Equal(ansi.Mode(ansi.COLOR_FG_RED) + "r" + ansi.Mode(ansi.COLOR_FG_DEFAULT)))
+		Expect(p.BgIdColor(4, "x")).To(Equal(ansi.Mode(ansi.Code_BG_ID(4)) + "x" + ansi.Mode(ansi.COLOR_BG_DEFAULT)))
+		Expect(plain.For(ttycolors.NewContext(false)).Red("r")).To(Equal("r"))
+	})
 })

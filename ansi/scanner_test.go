@@ -296,3 +296,56 @@ var _ = Describe("Effect", func() {
 		Entry("control sequences are kept after reset all", "\x1b[2K\x1b[0m", ansi.S_CONTROL, ansi.S_ALL),
 	)
 })
+
+var _ = Describe("ScanCodes", func() {
+	type found struct {
+		area ansi.Covered
+		code string
+	}
+	scan := func(s string) []found {
+		var r []found
+		for area, code := range ansi.ScanCodes(s) {
+			r = append(r, found{area, string(code.Bytes())})
+		}
+		return r
+	}
+
+	DescribeTable("provides the codes with their areas",
+		func(s string, expected ...found) {
+			if len(expected) == 0 {
+				Expect(scan(s)).To(BeEmpty())
+			} else {
+				Expect(scan(s)).To(Equal(expected))
+			}
+		},
+		Entry("no sequences", "abc"),
+		Entry("single codes", "\x1b[1;31ma\x1b[23m",
+			found{ansi.S_HIGHLIGHT, "1"}, found{ansi.S_FG_COLOR, "31"}, found{ansi.S_ITALIC, "23"}),
+		Entry("reset all", "\x1b[0m\x1b[m", found{ansi.S_ALL, "0"}, found{ansi.S_ALL, ""}),
+		Entry("extended colors", "\x1b[38;5;208;48;2;1;2;3;1m",
+			found{ansi.S_FG_COLOR, "38;5;208"}, found{ansi.S_BG_COLOR, "48;2;1;2;3"}, found{ansi.S_HIGHLIGHT, "1"}),
+		Entry("sub parameters", "\x1b[4:3;58:2::1:2:3m",
+			found{ansi.S_UNDERLINE, "4:3"}, found{ansi.S_UL_COLOR, "58:2::1:2:3"}),
+		Entry("codes without area", "\x1b[11;3m", found{ansi.S_ITALIC, "3"}),
+		Entry("other escape sequences", "\x1b[2K\x1b]0;title\a\x1b[3m", found{ansi.S_ITALIC, "3"}),
+	)
+
+	It("provides typed codes", func() {
+		var codes []ansi.CodeSequence
+		for _, c := range ansi.ScanCodes("\x1b[1;4:3;38;5;208m") {
+			codes = append(codes, c)
+		}
+		Expect(codes).To(Equal([]ansi.CodeSequence{ansi.MODE_BOLD, ansi.UNDERLINE_CURLY, ansi.Join(ansi.COLOR_FG_ID, ansi.Param(208))}))
+	})
+
+	It("stops when requested", func() {
+		n := 0
+		for range ansi.ScanCodes("\x1b[1;2;3m\x1b[4m") {
+			n++
+			if n == 2 {
+				break
+			}
+		}
+		Expect(n).To(Equal(2))
+	})
+})

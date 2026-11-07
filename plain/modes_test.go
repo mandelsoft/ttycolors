@@ -49,4 +49,10 @@ var _ = Describe("Modes without colors", func() {
 		ttycolors.NoColors = true
 		Expect(plain.Bold("a", plain.Italic("b"))).To(Equal("ab"))
 	})
+
+	It("provides formatted strings for a context", func() {
+		p := plain.For(ttycolors.NewContext(true))
+		Expect(p.Italic("i")).To(Equal(ansi.Mode(ansi.MODE_ITALIC) + "i" + ansi.Mode(ansi.MODE_RESET_ITALIC)))
+		Expect(plain.For(ttycolors.NewContext(false)).Italic("i")).To(Equal("i"))
+	})
 })

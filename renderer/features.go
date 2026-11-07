@@ -7,8 +7,9 @@ type Features uint
 
 const (
 	// FeatureFormatting enables output formatting at all.
-	// Without this feature, no escape sequences are rendered
-	// and output format sequences embedded in texts are removed.
+	// Without this feature, no escape sequences are rendered.
+	// Texts are never modified, output format sequences
+	// embedded in texts are kept.
 	FeatureFormatting Features = 1 << iota
 	// FeatureUnderlineStyles enables underline styles (double, curly, dotted, dashed).
 	FeatureUnderlineStyles
