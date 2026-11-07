@@ -157,6 +157,29 @@ var (
 	UNDERLINE_DASHED = Code{MODE_UNDERLINE, 5}
 )
 
+// Indexed colors of the color palette of [xterm] for the standard and
+// bright colors, for example for Code_FG_ID, Code_BG_ID, Code_UL_ID and the
+// corresponding id color functions of package ttycolors. Underline colors
+// have no codes of their own, these ids provide the standard colors for them.
+const (
+	COLOR_ID_BLACK byte = iota
+	COLOR_ID_RED
+	COLOR_ID_GREEN
+	COLOR_ID_YELLOW
+	COLOR_ID_BLUE
+	COLOR_ID_MAGENTA
+	COLOR_ID_CYAN
+	COLOR_ID_WHITE
+	COLOR_ID_BRIGHT_BLACK
+	COLOR_ID_BRIGHT_RED
+	COLOR_ID_BRIGHT_GREEN
+	COLOR_ID_BRIGHT_YELLOW
+	COLOR_ID_BRIGHT_BLUE
+	COLOR_ID_BRIGHT_MAGENTA
+	COLOR_ID_BRIGHT_CYAN
+	COLOR_ID_BRIGHT_WHITE
+)
+
 // Color kinds of extended colors (COLOR_FG, COLOR_BG and COLOR_UL) [T.416].
 const (
 	// COLOR_ID is an indexed color. With the 256 color palette of

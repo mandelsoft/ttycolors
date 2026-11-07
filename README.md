@@ -545,8 +545,13 @@ and utility functions for strings containing such sequences.
 The parameter list of an escape sequence is described by a `CodeSequence`:
 
 - A `Param` is a single numeric value, for example `1`.
-  All output format constants, like `MODE_BOLD` or `COLOR_FG_RED`, are `Param`s.
+  The output format constants with a single value, like `MODE_BOLD` or `COLOR_FG_RED`, are `Param`s.
 - A `Code` is a sequence of `Param`s separated by `:` (sub parameters), for example `4:3`.
+  The underline styles, like `UNDERLINE_CURLY`, require sub parameters and are provided as `Code`s.
+- Indexed colors (`38;5;n`, `48;5;n`, `58:5:n`) are created with `Code_FG_ID`, `Code_BG_ID`
+  and `Code_UL_ID`. The constants `COLOR_ID_RED` … `COLOR_ID_BRIGHT_WHITE` are the ids of the
+  standard and bright colors, for example for underline colors, which have no codes of their
+  own: `Code_UL_ID(COLOR_ID_RED)` or `ttycolors.FmtUnderlineIdColor(ansi.COLOR_ID_RED)`.
 - A `CodeSequence` is a sequence of `Code`s separated by `;`, for example `1;38;5;3`.
   `Param` and `Code` are `CodeSequence`s themselves, others are created with
   `NewCodeSequence(params...)` and `Join(sequences...)`.
