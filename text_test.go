@@ -18,10 +18,16 @@ var _ = Describe("Text", func() {
 			Expect(second).To(Equal(ansi.Mode(ansi.COLOR_FG_RED, ansi.MODE_BOLD) + "llo" + ansi.Mode(ansi.MODE_RESET_ALL) + " world"))
 		})
 
-		It("keeps explicit resets", func() {
+		It("ends formats with resets", func() {
 			first, second := SplitAt(s, 5)
 			Expect(first).To(Equal(ansi.Mode(ansi.MODE_BOLD, ansi.COLOR_FG_RED) + "Hällo" + ansi.Mode(ansi.COLOR_FG_DEFAULT, ansi.MODE_RESET_BOLD)))
-			Expect(second).To(Equal(ansi.Mode(ansi.MODE_RESET_ALL) + " world"))
+			Expect(second).To(Equal(" world"))
+		})
+
+		It("keeps explicitly switched off formats", func() {
+			first, second := SplitAt(ansi.Mode(ansi.MODE_RESET_ITALIC)+"ab", 1)
+			Expect(first).To(Equal(ansi.Mode(ansi.MODE_RESET_ITALIC) + "a"))
+			Expect(second).To(Equal(ansi.Mode(ansi.MODE_RESET_ITALIC) + "b"))
 		})
 
 		It("is the base of splitting Strings", func() {
@@ -48,7 +54,7 @@ var _ = Describe("Text", func() {
 	Context("SubString", func() {
 		It("provides self-contained substrings", func() {
 			Expect(SubString(s, 1, 4)).To(Equal(ansi.Mode(ansi.COLOR_FG_RED, ansi.MODE_BOLD) + "äll" + ansi.Mode(ansi.COLOR_FG_DEFAULT, ansi.MODE_RESET_BOLD)))
-			Expect(SubString(s, 6, 8)).To(Equal(ansi.Mode(ansi.MODE_RESET_ALL) + "wo"))
+			Expect(SubString(s, 6, 8)).To(Equal("wo"))
 		})
 
 		It("keeps untouched formats untouched", func() {
@@ -82,6 +88,20 @@ var _ = Describe("Text", func() {
 			Expect(StripIfDisabled(s)).To(Equal(s))
 			NoColors = true
 			Expect(StripIfDisabled(s)).To(Equal("Hällo world"))
+		})
+	})
+
+	Context("Normalize", func() {
+		It("ends formats with the resets of their groups", func() {
+			Expect(Normalize(ansi.Mode(ansi.COLOR_FG_RED) + "red" + ansi.Mode(ansi.MODE_RESET_ALL) + " rest")).To(Equal(
+				ansi.Mode(ansi.COLOR_FG_RED) + "red" + ansi.Mode(ansi.COLOR_FG_DEFAULT) + " rest"))
+		})
+
+		It("keeps an outer format visible", func() {
+			ctx := NewContext(true)
+			n := Normalize(ansi.Mode(ansi.COLOR_FG_RED) + "red" + ansi.Mode(ansi.MODE_RESET_ALL) + " rest")
+			Expect(ctx.Bold(n).String()).To(Equal(ansi.Mode(ansi.MODE_RESET_BOLD, ansi.MODE_BOLD) +
+				ansi.Mode(ansi.COLOR_FG_RED) + "red" + ansi.Mode(ansi.COLOR_FG_DEFAULT) + " rest" + ansi.Mode(ansi.MODE_RESET_BOLD)))
 		})
 	})
 })

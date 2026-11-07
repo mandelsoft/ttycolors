@@ -310,7 +310,10 @@ color or italic) has one of three states at every position of the text:
 - *explicitly reset*: a format switches the group off, for example `NonItalic(...)`.
 
 Already formatted Go strings keep this information, as far as possible: groups without
-output format sequences are untouched, groups switched off by a reset code are explicitly reset.
+output format sequences are untouched, a code sets the format of its group. A reset
+(of the group or of all modes, like `ESC[0m`) ends a format set before, so that the
+group is untouched again. Only a reset code for a group not set before (like the result
+of `NonItalic(...)` at the beginning of a string) explicitly switches the group off.
 
 `SplitAt(s, n)` splits a formatted Go string after `n` characters into two
 self-contained parts, which keep their output format, if they are embedded
@@ -341,6 +344,16 @@ corresponding formats, for example, scanned underline styles require
 ```golang
 f := ttycolors.ScanFormat(s)
 ttycolors.Sequence(s, f.String(" continued with the format at the end of s"))
+```
+
+`Normalize(s)` rewrites the output format sequences of a formatted Go string into
+the minimal codes required for the changes of the output format. A reset of all
+modes ending some formats is replaced by the resets of these formats, so that it does
+not affect other formats, for example a format applied to (a part of) the string.
+A reset of all modes is only used, if all formats have to be reset.
+
+```golang
+ttycolors.Normalize("\x1b[31mred\x1b[0m rest") // "\x1b[31mred\x1b[39m rest"
 ```
 
 Codes not affecting an output format group, for example fonts, are not tracked.
@@ -508,7 +521,7 @@ The functions never modify their arguments, even if colors are disabled.
 `StripIfDisabled(s)` removes the output format sequences from a string, if colors
 are disabled for the default context.
 
-The functions `SplitAt`, `SubString` and `ScanFormat` for formatted Go strings
+The functions `SplitAt`, `SubString`, `Normalize` and `ScanFormat` for formatted Go strings
 (see [Splitting Formatted Strings](#splitting-formatted-strings)) are offered,
 also. `ScanFormat` provides a format function:
 

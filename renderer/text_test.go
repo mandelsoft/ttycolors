@@ -29,10 +29,12 @@ var _ = Describe("Text", func() {
 			"a", "b"+bold+"cd"),
 		Entry("reopens explicitly reset groups", noitalic+"abcd", 2,
 			noitalic+"ab", noitalic+"cd"),
-		Entry("reopens all groups reset", bold+"ab"+resetAll+"cd", 3,
-			bold+"ab"+resetAll+"c", resetAll+"d"),
-		Entry("combines reset and set groups", italic+bold+"ab"+noitalic+"cd", 3,
-			italic+bold+"ab"+noitalic+"c"+nobold, ansi.Mode(ansi.MODE_BOLD, ansi.MODE_RESET_ITALIC)+"d"),
+		Entry("ends formats by a reset of all modes", bold+"ab"+resetAll+"cd", 3,
+			bold+"ab"+resetAll+"c", "d"),
+		Entry("combines reset and set groups", noitalic+bold+"ab"+"cd", 3,
+			noitalic+bold+"abc"+nobold, ansi.Mode(ansi.MODE_BOLD, ansi.MODE_RESET_ITALIC)+"d"),
+		Entry("ends formats by resets of the groups", italic+bold+"ab"+noitalic+"cd", 3,
+			italic+bold+"ab"+noitalic+"c"+nobold, bold+"d"),
 		Entry("keeps the last code of a group", ansi.Mode(ansi.COLOR_FG_RED, ansi.COLOR_FG_BLUE)+"ab", 1,
 			ansi.Mode(ansi.COLOR_FG_RED, ansi.COLOR_FG_BLUE)+"a"+ansi.Mode(ansi.COLOR_FG_DEFAULT), ansi.Mode(ansi.COLOR_FG_BLUE)+"b"),
 		Entry("keeps extended colors", ansi.Mode(ansi.Code_FG_ID(208), ansi.Code_BG_RGB(1, 2, 3))+"ab", 1,
@@ -42,11 +44,11 @@ var _ = Describe("Text", func() {
 			ansi.Modes(ansi.UNDERLINE_CURLY, ansi.COLOR_FG_RED)+"a"+ansi.Mode(ansi.COLOR_FG_DEFAULT, ansi.MODE_RESET_UNDERLINE),
 			ansi.Modes(ansi.COLOR_FG_RED, ansi.UNDERLINE_CURLY)+"b"),
 		Entry("replaces resets at the split position", bold+"ab"+nobold+"cd", 2,
-			bold+"ab"+nobold, nobold+"cd"),
+			bold+"ab"+nobold, "cd"),
 		Entry("replaces sets at the split position", "ab"+bold+"cd"+nobold, 2,
 			"ab", bold+"cd"+nobold),
 		Entry("replaces mixed sequences at the split position", bold+"ab"+nobold+italic+"cd", 2,
-			bold+"ab"+nobold, ansi.Mode(ansi.MODE_RESET_BOLD, ansi.MODE_ITALIC)+"cd"),
+			bold+"ab"+nobold, italic+"cd"),
 		Entry("replaces sets at the split position after a set group", bold+"ab"+italic+"cd", 2,
 			bold+"ab"+nobold, ansi.Mode(ansi.MODE_BOLD, ansi.MODE_ITALIC)+"cd"),
 		Entry("puts control sequences at the split position into the first part", "\x1b[2Kab\x1b]0;title\a"+bold+"cd", 2,
@@ -74,16 +76,44 @@ var _ = Describe("Text", func() {
 			}))
 		})
 
-		It("provides the reset codes for a reset of all modes", func() {
-			f := ScanFormat(bold + "a" + resetAll + "b")
-			Expect(f).To(HaveLen(len(groups)))
-			for _, g := range groups {
-				Expect(f[g]).To(Equal(g.reset))
-			}
+		It("omits formats ended by a reset of all modes", func() {
+			Expect(ScanFormat(bold + "a" + resetAll + "b")).To(BeEmpty())
+		})
+
+		It("keeps explicitly switched off groups after a reset of all modes", func() {
+			Expect(ScanFormat(noitalic + bold + "a" + resetAll + "b")).To(Equal(map[*Group]ansi.CodeSequence{
+				Italic: ansi.MODE_RESET_ITALIC,
+			}))
 		})
 
 		It("is empty for plain text", func() {
 			Expect(ScanFormat("abc")).To(BeEmpty())
 		})
+	})
+
+	DescribeTable("NormalizeText",
+		func(s, expected string) {
+			Expect(NormalizeText(s)).To(Equal(expected))
+		},
+		Entry("plain text", "abc", "abc"),
+		Entry("replaces a reset of all modes by the resets of the set groups",
+			ansi.Mode(ansi.COLOR_FG_RED)+"red"+resetAll+" rest",
+			ansi.Mode(ansi.COLOR_FG_RED)+"red"+ansi.Mode(ansi.COLOR_FG_DEFAULT)+" rest"),
+		Entry("combines sequences and omits redundant codes",
+			bold+ansi.Mode(ansi.COLOR_FG_RED)+"ab"+bold+"c"+resetAll,
+			ansi.Mode(ansi.COLOR_FG_RED, ansi.MODE_BOLD)+"abc"+ansi.Mode(ansi.COLOR_FG_DEFAULT, ansi.MODE_RESET_BOLD)),
+		Entry("keeps explicitly switched off groups", noitalic+"a"+italic+"b"+resetAll,
+			noitalic+"a"+italic+"b"+noitalic),
+		Entry("keeps control sequences", bold+"a"+resetAll+"\x1b[2Kb", bold+"a"+nobold+"\x1b[2Kb"),
+		Entry("keeps sequences with untracked codes", "\x1b[11ma\x1b[10m", "\x1b[11ma\x1b[10m"),
+		Entry("keeps open formats at the end", "a"+bold, "a"+bold),
+		Entry("omits sequences without effect", "a"+nobold+resetAll+"b", "a"+nobold+"b"),
+	)
+
+	It("uses a reset of all modes, if all groups are reset", func() {
+		s := ansi.Mode(ansi.COLOR_FG_RED, ansi.COLOR_BG_RED, ansi.MODE_BOLD, ansi.MODE_ITALIC, ansi.MODE_UNDERLINE,
+			ansi.MODE_BLINK, ansi.MODE_REVERSE, ansi.MODE_INVIS, ansi.MODE_STRIKE, ansi.MODE_OVERLINE) +
+			ansi.Mode(ansi.Code_UL_ID(1)) + "x" + resetAll
+		Expect(NormalizeText(s)).To(HaveSuffix("x" + resetAll))
 	})
 })

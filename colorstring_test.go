@@ -359,13 +359,22 @@ var _ = Describe("ColorString Test Environment", func() {
 
 		It("keeps explicitly switched off formats of embedded formatted texts", func() {
 			ctx := NewContext(true)
-			pre := ctx.Sequence(ctx.Italic("aa"), ctx.NonItalic("bb")).String()
+			pre := ctx.NonItalic("aabb").String()
 			l, r := ctx.Sequence(pre).SplitAt(3)
 			Expect(r.String()).To(Equal(ansi.Mode(ansi.MODE_RESET_ITALIC) + "b"))
 			// the second "b" stays upright in an outer italic format
-			Expect(ctx.Italic(l, r, "c").String()).To(Equal(ansi.Mode(ansi.MODE_ITALIC) + ansi.Mode(ansi.MODE_ITALIC) + "aa" +
-				ansi.Mode(ansi.MODE_RESET_ITALIC) + "b" + ansi.Mode(ansi.MODE_ITALIC) + ansi.Mode(ansi.MODE_RESET_ITALIC) + "b" +
+			Expect(ctx.Italic(l, r, "c").String()).To(Equal(ansi.Mode(ansi.MODE_ITALIC) + ansi.Mode(ansi.MODE_RESET_ITALIC) + "aab" +
+				ansi.Mode(ansi.MODE_ITALIC) + ansi.Mode(ansi.MODE_RESET_ITALIC) + "b" +
 				ansi.Mode(ansi.MODE_ITALIC) + "c" + ansi.Mode(ansi.MODE_RESET_ITALIC)))
+		})
+
+		It("ends formats of embedded formatted texts with their resets", func() {
+			ctx := NewContext(true)
+			// a rendered string cannot distinguish a NonItalic after
+			// an Italic from the end of the italic format.
+			pre := ctx.Sequence(ctx.Italic("aa"), ctx.NonItalic("bb")).String()
+			_, r := ctx.Sequence(pre).SplitAt(3)
+			Expect(r.String()).To(Equal("b"))
 		})
 
 		It("keeps formats of embedded formatted texts for an outer format", func() {

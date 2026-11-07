@@ -30,7 +30,8 @@
 // composed with package ttycolors, which renders nested formats structurally.
 //
 // SplitAt and SubString split formatted strings into self-contained
-// parts keeping their output format, and ScanFormat provides a format
+// parts keeping their output format, Normalize rewrites the output format
+// sequences into minimal codes, and ScanFormat provides a format
 // function for the output format established at the end of a formatted
 // string (see the functions of the same names in package ttycolors):
 //

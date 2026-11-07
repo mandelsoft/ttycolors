@@ -11,6 +11,13 @@ func SplitAt(s string, n int) (string, string) {
 	return ttycolors.SplitAt(s, n)
 }
 
+// Normalize rewrites the output format sequences of a string into the
+// minimal codes required for the changes of the output format
+// (see ttycolors.Normalize).
+func Normalize(s string) string {
+	return ttycolors.Normalize(s)
+}
+
 // StripIfDisabled removes the output format sequences from a string,
 // if output formatting is disabled for the default context of package
 // ttycolors. Otherwise, the string is returned unchanged

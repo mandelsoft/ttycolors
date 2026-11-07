@@ -141,11 +141,13 @@ func newFormat(settings renderer.Settings, fmts ...FormatProvider) FormatInfo {
 
 // ScanFormat provides the output format established at the end of a
 // text containing output format sequences, using the settings of the
-// default context. Every group touched by the text is part of the format:
-// a group set by the text uses its code, a group explicitly reset by the
-// text uses the reset code, like, for example, FmtNonItalic or
-// FmtUncoloredFG. Untouched groups are not part of the format, so that
-// formatted texts inherit the format of an outer format for them.
+// default context. A group set by the text uses its code. A reset (of the
+// group or of all modes) ends a format set before. A group explicitly
+// switched off by the text (a reset code for a group not set before) uses
+// the reset code, like, for example, FmtNonItalic or FmtUncoloredFG.
+// Untouched groups and groups whose format has been ended are not part of
+// the format, so that formatted texts inherit the format of an outer
+// format for them.
 //
 // Codes requiring a feature are handled like the corresponding formats:
 // underline styles require FeatureUnderlineStyles and fall back to

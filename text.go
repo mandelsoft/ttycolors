@@ -25,6 +25,19 @@ func SplitAt(s string, n int) (string, string) {
 	return renderer.SplitText(s, n)
 }
 
+// Normalize rewrites the output format sequences of a string into the
+// minimal codes required for the changes of the output format. A reset
+// of all modes ending some formats is replaced by the resets of these
+// formats, for example ESC[31mred ESC[0m becomes ESC[31mred ESC[39m,
+// so that it does not affect other formats, for example the formats of
+// an outer format. A reset of all modes is only used, if all formats
+// have to be reset. Redundant codes are omitted. Texts and other escape
+// sequences are kept. Codes not affecting an output format (for example
+// fonts) are not tracked, they are omitted in sequences with other codes.
+func Normalize(s string) string {
+	return renderer.NormalizeText(s)
+}
+
 // StripIfDisabled removes the output format sequences from a text,
 // if output formatting is disabled for the default context
 // (see TTYContext.StripIfDisabled).

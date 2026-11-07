@@ -60,4 +60,10 @@ var _ = Describe("Text", func() {
 		Expect(plain.For(ttycolors.NewContext(true)).StripIfDisabled(s)).To(Equal(s))
 		Expect(plain.For(ttycolors.NewContext(false)).StripIfDisabled(s)).To(Equal("bold"))
 	})
+
+	It("normalizes like package ttycolors", func() {
+		s := ansi.Mode(ansi.COLOR_FG_RED) + "red" + ansi.Mode(ansi.MODE_RESET_ALL) + " rest"
+		Expect(plain.Normalize(s)).To(Equal(ttycolors.Normalize(s)))
+		Expect(plain.Normalize(s)).To(Equal(ansi.Mode(ansi.COLOR_FG_RED) + "red" + ansi.Mode(ansi.COLOR_FG_DEFAULT) + " rest"))
+	})
 })

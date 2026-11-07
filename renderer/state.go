@@ -187,47 +187,69 @@ func (s state) Embedded(text string) state {
 // the desired state of all groups on the terminal and updates
 // the terminal state. Only groups whose desired code differs from
 // the terminal state are considered. All changes are combined into
-// one sequence (see ansi.Modes). If more than half of the groups have
-// to be reset, the resets are replaced by a single reset of all modes
-// followed by the codes of all groups not in default state, if this
-// is shorter.
+// one sequence (see ansi.Modes). If all groups have to be reset,
+// a single reset of all modes is used (see resetAll).
 func (s *state) Repeat() string {
-	var codes, alt []ansi.CodeSequence
-	resets := 0
+	all := s.allSetToBeReset()
+	var codes []ansi.CodeSequence
+	for _, g := range groups {
+		codes = g.field(s).repeat(g, codes)
+	}
+	return ansi.Modes(resetAll(all, codes)...)
+}
+
+// allSetToBeReset checks whether the terminal state of all groups
+// is not the default and all groups have to be reset.
+func (s *state) allSetToBeReset() bool {
 	for _, g := range groups {
 		e := g.field(s)
-		n := len(codes)
-		codes = e.repeat(g, codes)
-		if len(codes) > n && g.isDefault(codes[n]) {
-			resets++
-		}
-		if !g.isDefault(e.code) {
-			alt = append(alt, e.code)
+		if !g.isDefault(e.code) || (!e.unknown && g.isDefault(e.current)) {
+			return false
 		}
 	}
-	if resets > len(groups)/2 && len(alt)+1 < len(codes) {
-		codes = append([]ansi.CodeSequence{ansi.MODE_RESET_ALL}, alt...)
+	return true
+}
+
+// resetAll replaces the resets of all groups by a single reset of
+// all modes, if all groups are set and have to be reset. Otherwise,
+// the groups are reset individually, so that a reset of all modes
+// never affects more than the required groups.
+func resetAll(all bool, codes []ansi.CodeSequence) []ansi.CodeSequence {
+	if all {
+		return []ansi.CodeSequence{ansi.MODE_RESET_ALL}
 	}
-	return ansi.Modes(codes...)
+	return codes
 }
 
 // scan applies the output format sequences of a text to the state,
 // as if the text had been written: the codes found are the desired
-// and the current codes of their groups. Groups explicitly reset by
-// the text get their reset code, so that they can be distinguished
-// from untouched groups, whose desired code is still nil.
+// and the current codes of their groups. A reset of a group set before
+// (by a reset code of the group or a reset of all modes) ends its format,
+// the group is untouched again (desired code nil). A reset code for a group
+// not set before explicitly switches it off, the group keeps the reset code,
+// so that it can be distinguished from untouched groups. A reset of all
+// modes does not affect groups not set before.
 func (s *state) scan(text string) {
 	for area, code := range ansi.ScanCodes(text) {
 		for _, g := range groups {
 			if area&g.covered == 0 {
 				continue
 			}
-			c := code
-			if area == ansi.S_ALL {
-				c = g.reset
-			}
 			e := g.field(s)
-			e.code, e.current, e.unknown = c, c, false
+			switch {
+			case area == ansi.S_ALL || g.isDefault(code):
+				if !g.isDefault(e.code) {
+					// ends the format set before
+					e.code = nil
+				} else if area != ansi.S_ALL {
+					// explicitly switched off
+					e.code = code
+				}
+				e.current = nil
+			default:
+				e.code, e.current = code, code
+			}
+			e.unknown = false
 		}
 	}
 }
@@ -247,11 +269,14 @@ func (s state) reopen() string {
 // whose terminal state is not the terminal default, and updates
 // the terminal state. All resets are combined into one sequence.
 func (s *state) EmitEnds() string {
+	all := true
 	var codes []ansi.CodeSequence
 	for _, g := range groups {
 		if c := g.field(s).emitEnd(g); c != nil {
 			codes = append(codes, c)
+		} else {
+			all = false
 		}
 	}
-	return ansi.Modes(codes...)
+	return ansi.Modes(resetAll(all, codes)...)
 }

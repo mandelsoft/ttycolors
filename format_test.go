@@ -332,9 +332,9 @@ var _ = Describe("Format Test Environment", func() {
 				ansi.Mode(ansi.COLOR_FG_BLUE) + "x" + ansi.Mode(ansi.COLOR_FG_DEFAULT)))
 		})
 
-		It("handles a reset of all modes", func() {
+		It("ends formats by a reset of all modes", func() {
 			f := ctx.ScanFormat(ansi.Mode(ansi.MODE_BOLD) + "a" + ansi.Mode(ansi.MODE_RESET_ALL, ansi.COLOR_BG_BLUE))
-			Expect(ctx.Italic(f.String("x")).String()).To(Equal(ansi.Mode(ansi.MODE_RESET_ALL, ansi.COLOR_BG_BLUE) + "x" + ansi.Mode(ansi.COLOR_BG_DEFAULT)))
+			Expect(ctx.Italic(f.String("x")).String()).To(Equal(ansi.Mode(ansi.COLOR_BG_BLUE, ansi.MODE_ITALIC) + "x" + ansi.Mode(ansi.COLOR_BG_DEFAULT, ansi.MODE_RESET_ITALIC)))
 		})
 
 		It("maps dim like FmtDim", func() {

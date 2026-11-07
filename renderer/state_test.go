@@ -224,42 +224,56 @@ var _ = Describe("State", func() {
 		})
 	})
 
-	Context("Repeat with many resets", func() {
-		// resetMost provides a state with all groups but FG and BG
-		// rendered with a code and desired to be reset.
-		resetMost := func() state {
+	Context("reset of all modes", func() {
+		// allSet provides a state with all groups rendered with a code.
+		allSet := func() state {
 			var s state
 			for _, g := range groups {
-				if g != FG && g != BG {
-					s = s.Set(g, ansi.MODE_BOLD)
-				}
+				s = s.Set(g, ansi.MODE_BOLD)
 			}
 			s.Repeat()
-			for _, g := range groups {
-				if g != FG && g != BG {
-					s = s.Set(g, nil)
-				}
-			}
 			return s
 		}
 
-		It("replaces the resets by a reset of all modes", func() {
-			s := resetMost().Set(BG, ansi.COLOR_BG_BLUE)
-			Expect(s.Repeat()).To(Equal(ansi.Mode(ansi.MODE_RESET_ALL, ansi.COLOR_BG_BLUE)))
+		It("is used by Repeat, if all groups are set and have to be reset", func() {
+			s := allSet()
+			for _, g := range groups {
+				s = s.Set(g, nil)
+			}
+			Expect(s.Repeat()).To(Equal(ansi.Mode(ansi.MODE_RESET_ALL)))
 			Expect(s.Repeat()).To(Equal(""))
 		})
 
-		It("sets unchanged groups again", func() {
-			s := resetMost().Set(FG, ansi.COLOR_FG_RED)
-			s.fg.current = ansi.COLOR_FG_RED
-			Expect(s.Repeat()).To(Equal(ansi.Mode(ansi.MODE_RESET_ALL, ansi.COLOR_FG_RED)))
+		It("is not used by Repeat, if a group is kept", func() {
+			s := allSet()
+			for _, g := range groups {
+				if g != FG {
+					s = s.Set(g, nil)
+				}
+			}
+			Expect(s.Repeat()).To(Equal(ansi.Mode(ansi.COLOR_BG_DEFAULT, ansi.MODE_RESET_BOLD, ansi.MODE_RESET_ITALIC,
+				ansi.MODE_RESET_UNDERLINE, ansi.MODE_RESET_BLINK, ansi.MODE_RESET_REVERSE, ansi.MODE_RESET_INVIS,
+				ansi.MODE_RESET_STRIKE, ansi.MODE_RESET_OVERLINE, ansi.COLOR_UL_DEFAULT)))
 		})
 
-		It("keeps the resets for a few groups", func() {
-			s := set(Italic, ansi.MODE_ITALIC, Highlight, ansi.MODE_BOLD)
-			s.Repeat()
-			s = s.Set(Italic, nil).Set(Highlight, nil)
-			Expect(s.Repeat()).To(Equal(ansi.Mode(ansi.MODE_RESET_BOLD, ansi.MODE_RESET_ITALIC)))
+		It("is not used by Repeat, if a group is not set", func() {
+			s := allSet()
+			s.fg.current = nil
+			for _, g := range groups {
+				s = s.Set(g, nil)
+			}
+			Expect(s.Repeat()).NotTo(ContainSubstring(ansi.Mode(ansi.MODE_RESET_ALL)))
+		})
+
+		It("is used by EmitEnds, if all groups are set", func() {
+			s := allSet()
+			Expect(s.EmitEnds()).To(Equal(ansi.Mode(ansi.MODE_RESET_ALL)))
+		})
+
+		It("is not used by EmitEnds, if a group is not set", func() {
+			s := allSet()
+			s.fg.current = nil
+			Expect(s.EmitEnds()).NotTo(ContainSubstring(ansi.Mode(ansi.MODE_RESET_ALL)))
 		})
 	})
 
@@ -274,16 +288,28 @@ var _ = Describe("State", func() {
 			Expect(s.fg.current).To(Equal(ansi.COLOR_FG_RED))
 		})
 
-		It("resets all groups explicitly", func() {
+		It("ends set formats by a reset of all modes", func() {
 			var s state
-			s.scan(ansi.Mode(ansi.MODE_BOLD) + ansi.Mode(ansi.MODE_RESET_ALL, ansi.COLOR_BG_BLUE))
-			for _, g := range groups {
-				if g == BG {
-					Expect(s.Get(g)).To(Equal(ansi.COLOR_BG_BLUE))
-				} else {
-					Expect(s.Get(g)).To(Equal(g.reset))
-				}
-			}
+			s.scan(ansi.Mode(ansi.MODE_BOLD, ansi.MODE_RESET_ITALIC) + ansi.Mode(ansi.MODE_RESET_ALL, ansi.COLOR_BG_BLUE))
+			Expect(s.Get(BG)).To(Equal(ansi.COLOR_BG_BLUE))
+			Expect(s.Get(Highlight)).To(BeNil())
+			Expect(s.highlight.current).To(BeNil())
+			// explicitly switched off groups are kept
+			Expect(s.Get(Italic)).To(Equal(ansi.MODE_RESET_ITALIC))
+			Expect(s.Get(FG)).To(BeNil())
+		})
+
+		It("ends a set format by a reset of the group", func() {
+			var s state
+			s.scan(ansi.Mode(ansi.MODE_BOLD) + "x" + ansi.Mode(ansi.MODE_RESET_BOLD))
+			Expect(s.Get(Highlight)).To(BeNil())
+			Expect(s.highlight.current).To(BeNil())
+		})
+
+		It("switches off a group not set before", func() {
+			var s state
+			s.scan(ansi.Mode(ansi.MODE_RESET_BOLD))
+			Expect(s.Get(Highlight)).To(Equal(ansi.MODE_RESET_BOLD))
 		})
 
 		It("clears an unknown state", func() {
@@ -313,10 +339,10 @@ var _ = Describe("State", func() {
 			Expect(s.highlight.current).To(Equal(ansi.MODE_BOLD))
 		})
 
-		It("uses a reset of all modes", func() {
+		It("does not reset groups after a reset of all modes", func() {
 			var s state
-			s.scan(ansi.Mode(ansi.MODE_RESET_ALL, ansi.MODE_ITALIC))
-			Expect(s.reopen()).To(Equal(ansi.Mode(ansi.MODE_RESET_ALL, ansi.MODE_ITALIC)))
+			s.scan(ansi.Mode(ansi.MODE_BOLD) + ansi.Mode(ansi.MODE_RESET_ALL, ansi.MODE_ITALIC))
+			Expect(s.reopen()).To(Equal(ansi.Mode(ansi.MODE_ITALIC)))
 		})
 
 		It("is empty for an empty state", func() {
